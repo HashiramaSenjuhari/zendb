@@ -1,4 +1,5 @@
 use find::Item;
+use postgres::types::ToSql;
 use postgres::Client;
 
 pub mod create;
