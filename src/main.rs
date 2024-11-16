@@ -1,11 +1,5 @@
 use postgres::{Client, NoTls};
-use zen::{
-    create::CreateBuilder,
-    delete::{Delete, DeleteBuilder},
-    find::FindBuilder,
-    update::UpdateBuilder,
-    Update,
-};
+use zen::{CreateBuilder, DeleteBuilder, FindBuilder, UpdateBuilder};
 
 fn main() {
     let mut conn = Client::connect("host=127.0.0.1 port=5432 dbname=t user=postgres password=hariclash123 connect_timeout=10 sslmode=prefer", NoTls).unwrap();
@@ -19,7 +13,7 @@ fn main() {
     println!("{:?}", create);
     let billion = FindBuilder::new(&mut conn)
         .table("zen")
-        .item(zen::find::Item::Specific { item: "" }
+        .item(zen::find::Item::Specific(&[""]))
         .condition(zen::Condition {
             condition: "email",
             value: "rtyui",
@@ -28,7 +22,7 @@ fn main() {
         .build();
     let c = DeleteBuilder::new(&mut conn)
         .table("zen")
-        .condition(Some(zen::delete::Condtion { key: "", value: "" }))
+        .condition(Some(zen::Condtion { key: "", value: "" }))
         .build()
         .build();
     let u = UpdateBuilder::new(&mut conn)

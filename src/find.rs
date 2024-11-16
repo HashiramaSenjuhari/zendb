@@ -7,7 +7,7 @@ use crate::{
 
 pub enum Item<'item> {
     All,
-    Specific { item: &'item [&'item str] },
+    Specific(&'item [&'item str]),
 }
 
 impl<'find> FindBuilder<'find, TableNotPresent, KeyNotPresent, ValueNotPresent> {
