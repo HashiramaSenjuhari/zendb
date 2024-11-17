@@ -1,5 +1,5 @@
 use postgres::{Client, NoTls};
-use zen::{CreateBuilder, DeleteBuilder, FindBuilder, UpdateBuilder};
+use zendb::{CreateBuilder, DeleteBuilder, FindBuilder, UpdateBuilder};
 
 fn main() {
     let mut conn = Client::connect("", NoTls).unwrap();
