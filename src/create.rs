@@ -3,7 +3,8 @@ use std::marker::PhantomData;
 use postgres::{types::ToSql, Client};
 
 use crate::{
-    Create, CreateBuilder, KeyNotPresent, KeyPresent, TableNotPresent, TablePresent, ValueNotPresent, ValuePresent
+    Create, CreateBuilder, KeyNotPresent, KeyPresent, TableNotPresent, TablePresent,
+    ValueNotPresent, ValuePresent,
 };
 
 impl<'create> CreateBuilder<'create, TableNotPresent, KeyNotPresent, ValueNotPresent> {
@@ -72,7 +73,7 @@ impl<'create> CreateBuilder<'create, TablePresent, KeyPresent, ValueNotPresent> 
 }
 
 impl<'create> CreateBuilder<'create, TablePresent, KeyPresent, ValuePresent> {
-    pub fn setttt(self) -> Create<'create> {
+    pub fn confirm(self) -> Create<'create> {
         Create {
             conn: self.conn.unwrap(),
             key: self.key,

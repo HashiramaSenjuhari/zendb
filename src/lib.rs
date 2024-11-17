@@ -35,14 +35,12 @@ pub struct KeyNotPresent {}
 pub struct ValuePresent {}
 pub struct ValueNotPresent {}
 
-pub struct UpdateBuilder<'update, TableState, ContionState, WhereState> {
+pub struct UpdateBuilder<'update, TableState> {
     conn: &'update mut Client,
     table: Vec<&'update str>,
     values: Vec<Condition<'update>>,
     condition: Vec<Option<Condition<'update>>>,
     tablestate: std::marker::PhantomData<TableState>,
-    conditionstate: std::marker::PhantomData<ContionState>,
-    wherestate: std::marker::PhantomData<WhereState>,
 }
 
 pub struct Update<'update> {
@@ -58,14 +56,13 @@ pub struct Find<'find> {
     item: Vec<Item<'find>>,
     condition: Vec<Condition<'find>>,
 }
-pub struct FindBuilder<'find, TableState, KeyState, ValueState> {
+pub struct FindBuilder<'find, TableState, KeyState> {
     connection: &'find mut Client,
     table: Vec<&'find str>,
     item: Vec<Item<'find>>,
     condition: Vec<Condition<'find>>,
     tablestate: std::marker::PhantomData<TableState>,
     keystate: std::marker::PhantomData<KeyState>,
-    valuestate: std::marker::PhantomData<ValueState>,
 }
 
 pub struct Delete<'delete> {
@@ -74,12 +71,11 @@ pub struct Delete<'delete> {
     condition: Vec<Option<Condtion<'delete>>>,
 }
 
-pub struct DeleteBuilder<'delete, TableState, ConditionState> {
+pub struct DeleteBuilder<'delete, TableState> {
     connection: Option<&'delete mut Client>,
     table: Vec<&'delete str>,
     condition: Vec<Option<Condtion<'delete>>>,
     tablestate: std::marker::PhantomData<TableState>,
-    condtionstate: std::marker::PhantomData<ConditionState>,
 }
 
 pub struct CreateBuilder<'create, TableState, KeyState, ValueState> {

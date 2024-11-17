@@ -1,8 +1,8 @@
-use postgres::{Client, Error};
+use postgres::{types::ToSql, Client, Error};
 
 use crate::{
     Condition, Find, FindBuilder, KeyNotPresent, KeyPresent, TableNotPresent, TablePresent,
-    ValueNotPresent, ValuePresent,
+    ValueNotPresent,
 };
 
 pub enum Item<'item> {
@@ -10,7 +10,7 @@ pub enum Item<'item> {
     Specific(&'item [&'item str]),
 }
 
-impl<'find> FindBuilder<'find, TableNotPresent, KeyNotPresent, ValueNotPresent> {
+impl<'find> FindBuilder<'find, TableNotPresent, KeyNotPresent> {
     pub fn new(connection: &'find mut Client) -> Self {
         Self {
             connection: connection,
@@ -19,13 +19,9 @@ impl<'find> FindBuilder<'find, TableNotPresent, KeyNotPresent, ValueNotPresent> 
             condition: Vec::new(),
             tablestate: std::marker::PhantomData,
             keystate: std::marker::PhantomData,
-            valuestate: std::marker::PhantomData,
         }
     }
-    pub fn table(
-        mut self,
-        table: &'find str,
-    ) -> FindBuilder<TablePresent, KeyNotPresent, ValueNotPresent> {
+    pub fn table(mut self, table: &'find str) -> FindBuilder<TablePresent, KeyNotPresent> {
         self.table.push(table);
         FindBuilder {
             connection: self.connection,
@@ -34,16 +30,12 @@ impl<'find> FindBuilder<'find, TableNotPresent, KeyNotPresent, ValueNotPresent> 
             condition: self.condition,
             tablestate: std::marker::PhantomData,
             keystate: std::marker::PhantomData,
-            valuestate: std::marker::PhantomData,
         }
     }
 }
 
-impl<'key> FindBuilder<'key, TablePresent, KeyNotPresent, ValueNotPresent> {
-    pub fn item(
-        mut self,
-        item: Item<'key>,
-    ) -> FindBuilder<TablePresent, KeyPresent, ValueNotPresent> {
+impl<'key> FindBuilder<'key, TablePresent, KeyNotPresent> {
+    pub fn item(mut self, item: Item<'key>) -> FindBuilder<TablePresent, KeyPresent> {
         self.item.push(item);
         FindBuilder {
             connection: self.connection,
@@ -52,16 +44,15 @@ impl<'key> FindBuilder<'key, TablePresent, KeyNotPresent, ValueNotPresent> {
             condition: self.condition,
             tablestate: std::marker::PhantomData,
             keystate: std::marker::PhantomData,
-            valuestate: std::marker::PhantomData,
         }
     }
 }
 
-impl<'value> FindBuilder<'value, TablePresent, KeyPresent, ValueNotPresent> {
+impl<'value> FindBuilder<'value, TablePresent, KeyPresent> {
     pub fn condition(
         mut self,
         condition: Condition<'value>,
-    ) -> FindBuilder<'value, TablePresent, KeyPresent, ValuePresent> {
+    ) -> FindBuilder<'value, TablePresent, KeyPresent> {
         self.condition.push(condition);
         FindBuilder {
             connection: self.connection,
@@ -70,13 +61,12 @@ impl<'value> FindBuilder<'value, TablePresent, KeyPresent, ValueNotPresent> {
             condition: self.condition,
             tablestate: std::marker::PhantomData,
             keystate: std::marker::PhantomData,
-            valuestate: std::marker::PhantomData,
         }
     }
 }
 
-impl<'block> FindBuilder<'block, TablePresent, KeyPresent, ValuePresent> {
-    pub fn settt(self) -> Find<'block> {
+impl<'block> FindBuilder<'block, TablePresent, KeyPresent> {
+    pub fn confirm(self) -> Find<'block> {
         Find {
             coonection: self.connection,
             table: self.table,
@@ -91,6 +81,7 @@ impl<'find> Find<'find> {
         let mut item = String::new();
         let mut keyy = String::new();
         let mut table = String::new();
+        let mut keyvalue: Vec<&(dyn ToSql + Sync)> = Vec::new();
 
         for tablee in self.table.iter() {
             table.push_str(&tablee);
@@ -109,26 +100,39 @@ impl<'find> Find<'find> {
             }
         }
         for (index, conditions) in self.condition.iter().enumerate() {
-            let ids = format!("${},", index + 1);
+            let ids = format!("${}", index + 1);
             let key = format!("{}", conditions.condition);
 
-            let key = format!("{} = {}", key, ids);
+            let key = format!("{} = {} AND ", key, ids);
+
+            keyvalue.push(&conditions.value);
 
             keyy.push_str(&key);
         }
-        let keyy = keyy.trim_end_matches(",");
+        let keyy = keyy.trim_end_matches("AND ");
         let item = item.trim_end_matches(",");
 
         let values: Vec<&str> = self.condition.iter().map(|b| b.value.as_ref()).collect();
-        let value = values.join(",");
 
         // println!("{:?}", values);
 
-        let find = format!("SELECT {} FROM {} WHERE {};", item, table, keyy);
+        match keyy.len() > 0 {
+            true => {
+                let find = format!("SELECT {} FROM {} WHERE {};", item, table, keyy);
 
-        // println!("{}", find);
+                println!("{}", find);
 
-        let find = self.coonection.query(&find, &[&value]);
-        find
+                let find = self.coonection.query(&find, &keyvalue);
+                find
+            }
+            false => {
+                let find = format!("SELECT {} FROM {};", item, table);
+
+                println!("{}", find);
+
+                let find = self.coonection.query(&find, &keyvalue);
+                find
+            }
+        }
     }
 }
