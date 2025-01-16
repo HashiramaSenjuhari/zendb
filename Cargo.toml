@@ -1,6 +1,6 @@
 [package]
-name = "zendb"
-version = "0.1.1"
+name = "rusty-postgres"
+version = "0.1.2"
 edition = "2021"
 authors = ["hariprasath"]
 description = "A simple Rust-based postgres server that listens on a postgres server"
@@ -10,5 +10,14 @@ homepage = "https://crates.io/crates/zendb"
 documentation = "https://docs.rs/rusty_oauth/latest/zendb/"
 
 [dependencies]
-postgres = "0.19.9"
+# postgres = "0.19.9"
+postgres = { version = "0.19.9", features = ["with-uuid-1", "with-chrono-0_4"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = { version = "1.0.134" }
+uuid = { version = "1.11.0" }
+chrono = { version = "*" }
+rand = "0.8.5"
 
+[features]
+# default = ["search"]
+search = []
