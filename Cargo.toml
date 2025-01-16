@@ -20,4 +20,12 @@ rand = "0.8.5"
 
 [features]
 # default = ["search"]
-search = []
+full_search = []
+ranked_search = []
+count = []
+pagination = []
+similar_search = []
+gin_index = []
+brin_index = []
+partition = []
+horizontal_split = []
