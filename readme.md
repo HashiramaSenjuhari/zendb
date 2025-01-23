@@ -1,5 +1,5 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Crates.io](https://img.shields.io/crates/v/http-scrap)
+![Crates.io](https://img.shields.io/crates/v/rusty-postgres)
 
 # A Advanced Lightwight ORM and Query Builder for postgres
 
