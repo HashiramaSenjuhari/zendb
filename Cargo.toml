@@ -1,9 +1,9 @@
 [package]
-name = "rusty-postgres"
-version = "0.1.3-beta"
+name = "rusty_postgres"
+version = "0.1.4-beta"
 edition = "2021"
 authors = ["hariprasath"]
-description = "A simple Rust-based postgres server that listens on a postgres server"
+description = "A advanced lightwight ORM and Query Builder for postgres"
 license = "MIT"
 repository = "https://github.com/HashiramaSenjuhari/zendb"
 homepage = "https://crates.io/crates/zendb"
@@ -17,15 +17,16 @@ serde_json = { version = "1.0.134" }
 uuid = { version = "1.11.0" }
 chrono = "0.4.39"
 rand = "0.8.5"
+regex = "1.11.1"
 
 [features]
-# default = ["search"]
+default = []
 full_search = []
 ranked_search = []
 count = []
 pagination = []
 similar_search = []
-gin_index = []
+geography = []
 brin_index = []
 partition = []
 horizontal_split = []

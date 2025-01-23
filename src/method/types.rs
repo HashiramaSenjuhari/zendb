@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
-pub struct ID<'billionaire>(pub &'billionaire str);
+pub struct ID<Billionaire>(pub Billionaire);
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OneToOne<'billionaire> {
@@ -28,10 +28,13 @@ pub struct BOOL;
 pub struct NUMBER;
 
 #[derive(Debug, Serialize)]
+pub struct FLOAT;
+
+#[derive(Debug, Serialize)]
 pub struct JSON;
 
 #[derive(Debug, Serialize)]
-pub struct DEFAULT<'billionaire>(pub &'billionaire str);
+pub struct DEFAULT<Billionaire>(pub Billionaire);
 
 // #[derive(Debug)]
 // pub struct Condition<K, V>
@@ -58,16 +61,17 @@ pub struct DEFAULT<'billionaire>(pub &'billionaire str);
 //     billiondollar: String,
 // }
 #[derive(Debug, Serialize)]
-pub struct Date<'billionaire>(pub &'billionaire str);
+pub struct Date<Billionaire>(pub Billionaire);
 
 #[derive(Debug, Serialize)]
-pub struct Time<'billionaire>(pub &'billionaire str);
+pub struct Time<Billionaire>(pub Billionaire);
 
 #[derive(Debug, Serialize)]
-pub struct DateTime<'billionaire>(pub &'billionaire str);
+pub struct DateTime<Billionaire>(pub Billionaire);
 
+#[cfg(feature = "geography")]
 #[derive(Debug, Serialize)]
-pub struct Geography;
+pub struct Geography<Billionaire>(pub Billionaire);
 
 #[derive(Debug, Serialize)]
 pub struct NOTNULL;
@@ -78,3 +82,53 @@ pub struct PRIMARY;
 #[derive(Debug, Serialize)]
 pub struct INDEX;
 
+// * POINTS
+#[cfg(feature = "geography")]
+#[derive(Debug, Serialize)]
+pub struct POINT<Billionaire>(pub Billionaire);
+
+#[cfg(feature = "geography")]
+#[derive(Debug, Serialize)]
+pub struct POLYGON<Billionaire>(pub Billionaire);
+
+#[cfg(feature = "geography")]
+#[derive(Debug, Serialize)]
+pub struct Epsg4326;
+
+#[cfg(feature = "geography")]
+#[derive(Debug, Serialize)]
+pub struct Epsg3857;
+
+#[cfg(feature = "geography")]
+pub fn point_epsg_4326(lat: f64, lon: f64) -> String {
+    let value = format!("SRID=4326;POINT({} {})", lon, lat);
+    value
+}
+
+#[cfg(feature = "geography")]
+pub fn point_epsg_3857(lat: &str, lon: &str) -> String {
+    let value = format!("SRID=4326;POINT({} {})", lon, lat);
+    value
+}
+
+pub mod id {
+    use serde::Serialize;
+
+    #[derive(Debug, Serialize)]
+    pub struct UUID;
+
+    #[derive(Debug, Serialize)]
+    pub struct CUID;
+
+    #[derive(Debug, Serialize)]
+    pub struct AUTO;
+
+    #[derive(Debug, Serialize)]
+    pub struct BIGINT;
+}
+
+#[derive(Debug, Serialize)]
+pub struct NOW;
+
+#[derive(Debug, Serialize)]
+pub struct CUSTOME;
