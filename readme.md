@@ -5,6 +5,12 @@
 
 ## Usage
 
+## Client
+
+```rust
+  let mut postgres = Client::connect("host=127.0.0.1 port=5432 dbname=name user=postgres password=xxxxxxxxx connect_timeout=10 sslmode=prefer", NoTls);
+```
+
 ## Create Schema without any hassale
 
 ```rust
