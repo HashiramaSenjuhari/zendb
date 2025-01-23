@@ -1,13 +1,13 @@
 [package]
 name = "rusty_postgres"
-version = "0.1.4-beta"
+version = "0.1.0-beta"
 edition = "2021"
 authors = ["hariprasath"]
 description = "A advanced lightwight ORM and Query Builder for postgres"
 license = "MIT"
-repository = "https://github.com/HashiramaSenjuhari/zendb"
-homepage = "https://crates.io/crates/zendb"
-documentation = "https://docs.rs/rusty_oauth/latest/zendb/"
+repository = "https://github.com/HashiramaSenjuhari/zen"
+homepage = "https://crates.io/crates/rusty_postgres"
+documentation = "https://docs.rs/rusty_oauth/latest/rusty_postgres/"
 
 [dependencies]
 # postgres = "0.19.9"
