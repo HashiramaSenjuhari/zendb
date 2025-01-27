@@ -15,6 +15,6 @@ Click the **Fork** button at the top-right corner of the page to create your own
 Clone your forked repository to your local machine:
 
 ```bash
-git clone https://github.com/HashiramaSenjuhari/rusty_postgres
-cd rusty_postgres
+git clone https://github.com/HashiramaSenjuhari/zendb
+cd zendb
 ```

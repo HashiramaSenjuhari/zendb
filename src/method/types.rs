@@ -1,3 +1,6 @@
+// use std::io::Read;
+
+// use postgres::types::FromSql;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -132,3 +135,24 @@ pub struct NOW;
 
 #[derive(Debug, Serialize)]
 pub struct CUSTOME;
+
+// pub struct Points {
+//     pub point: String,
+// }
+
+// impl<'a> FromSql<'a> for Points {
+//     fn from_sql(
+//         ty: &postgres::types::Type,
+//         mut raw: &'a [u8],
+//     ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+//         let mut value = String::new();
+//         raw.read_to_string(&mut value);
+//         println!("type {}", ty);
+//         println!("data {:?}", raw);
+//         println!("{}", value);
+//         Ok(Points { point: value })
+//     }
+//     fn accepts(ty: &postgres::types::Type) -> bool {
+//         true
+//     }
+// }

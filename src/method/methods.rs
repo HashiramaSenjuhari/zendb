@@ -263,7 +263,9 @@ macro_rules! model {
                             unique.push_str(&format!("{},",$billionaire.to_lowercase()))
                         }
                         else if value.starts_with("PRIMARY"){
-                            primary_key.push_str(&format!("{},",$billionaire.to_lowercase()));
+                            if !primary_key.contains(&$billionaire.to_lowercase()){
+                                primary_key.push_str(&format!("{},",$billionaire.to_lowercase()));
+                            }
                         }
                         else if value.starts_with("INDEX"){
                             index.push_str(&format!("{},",$billionaire.to_lowercase()))
@@ -286,13 +288,13 @@ macro_rules! model {
                 }
                 if unique.len() != 0 {
                     let mut unique = unique.trim_end_matches(",");
-                    let key = format!("UNIQUE ({})",unique);
+                    let key = format!("UNIQUE ({}),\r\n",unique);
                     // println!("{}",key);
                     table.push_str(&key);
                 }
                 if foriegn_key.len() != 0 {
                     // println!("{}",foriegn_key);
-                    let foriegn_key = format!(",\r\n{}",foriegn_key);
+                    let foriegn_key = format!("{}",foriegn_key);
                     table.push_str(&foriegn_key);
                 }
                 let table = table.trim_end_matches(",\r\n");
@@ -730,13 +732,12 @@ macro_rules! container {
 }
 
 #[macro_export]
-macro_rules! find_one {
-  (@format $connection:expr,$model:expr,$client:expr) => {
-    {
+macro_rules! formats {
+    ($client:expr) => {{
         use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
         use std::collections::BTreeMap;
-        use uuid::Uuid;
         use std::panic;
+        use uuid::Uuid;
 
         let mut billionaires = Vec::new();
         for billionaire in $client.iter() {
@@ -748,620 +749,192 @@ macro_rules! find_one {
                 let name = billionaires.name();
                 let billion = billionaires.type_().name();
 
-                    // println!("{:?}", billion);
+                // println!("{:?}", billion);
 
                 let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
+                    "text" => {
+                        let value: String = billionaire.get(name);
+                        value
+                    }
+                    "date" => {
+                        let value: NaiveDate = billionaire.get(name);
+                        value.to_string()
+                    }
+                    "timestamp" => {
+                        let value: NaiveDateTime = billionaire.get(name);
+                        value.to_string()
+                    }
+                    "int4" => {
+                        let value: i32 = billionaire.get(name);
+                        value.to_string()
+                    }
+                    "int8" => {
                         let value: i64 = billionaire.get(name);
                         value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-    }
-  };
-    // * model //completed
-    (connection => $connection:expr,model:$model:expr) => {
-        {
-          use core::panic;
-            let mut command = String::new();
-            if $model.len() != 0 {
-                let query = format!("SELECT * FROM {} LIMIT 1;",$model);
-                command.push_str(&query);
-                let client = $connection.query(&command,&[]).unwrap();
-
-                // * listing column_name,data_type
-                find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-    }
-    };
-    // * where //completed
-    (connection => $connection:expr,
-            model:$model:expr,
-        condition:{
-            $($value_where:expr => $where_by:expr),*
-        }) => {
-            {
-              use postgres::types::ToSql;
-                // println!("{}","billionaire");
-                // let mut command = String::new();
-                // let mut select_value = String::new();
-                let mut where_value = String::new();
-                let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selections = String::new();
-
-                if $model.len() != 0 {
-                    $(
-                        // let selectvalue = format!("{},",$value_where);
-                        // select_value.push_str(&selectvalue);
-
-                        let selectvalue = format!("'{}',",$value_where);
-                        selections.push_str(&selectvalue);
-                    )*
-                    let mut idx = 0;
-                    $(
-                            idx +=1;
-                            let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                            where_value.push_str(&wherevalue);
-                    )*
-                    let where_value = where_value.trim_end_matches("OR ").to_string();
-                    // println!("{}",idx);
-                    $(
-                        value.push(&$where_by);
-                    )*
-                    // let select_value = select_value.trim_end_matches(",");
-                    let where_value = where_value.trim_end_matches("AND ");
-                    let selections = selections.trim_end_matches(",");
-
-                    let query = format!("SELECT * FROM {} WHERE {} LIMIT 1;",$model,where_value);
-                    // println!("{}",query);
-                    // println!("{:?}",value);
-                    // command.push_str(&query);
-                    let client = $connection.query(&query,&value).unwrap();
-                    // println!("{:?}","client");
-
-                    find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-        }
-    };
-    // * where //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-        $($values:expr),*
-    },
-    condition:{
-        $($value_where:expr => $where_by:expr),*
-    }) => {
-        {
-          use core::panic;
-            use postgres::types::ToSql;
-            // println!("{}","billionaire");
-            // let mut command = String::new();
-            let mut select_value = String::new();
-            let mut where_value = String::new();
-            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut selection = String::new();
-
-            if $model.len() != 0 {
-                $(
-                    let selectvalue = format!("{},",$values);
-                    select_value.push_str(&selectvalue);
-
-                    let selectvalue = format!("'{}',",$values);
-                    selection.push_str(&selectvalue);
-                )*
-                let mut idx = 0;
-                $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} AND ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                )*
-                // println!("{}",idx);
-                $(
-                    value.push(&$where_by);
-                )*
-                let select_value = select_value.trim_end_matches(",");
-                let where_value = where_value.trim_end_matches("AND ");
-                let selection = selection.trim_end_matches(",");
-
-                // println!("{}",select_value);
-                let query = format!("SELECT {} FROM {} WHERE {} LIMIT 1;",select_value,$model,where_value);
-                // println!("{}",query);
-                // println!("{:?}",value);
-                // command.push_str(&query);
-                let client = $connection.query(&query,&value).unwrap();
-                // println!("{:?}","client");
-
-                find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }};
-    // *
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-        $($values:expr),*
-    },
-    condition:{
-        $($value_where:expr => $where_by:expr),*
-    },
-    between:{
-        $value:expr => {
-            $first:expr,
-            $second:expr
-        }
-    }
-    ) => {
-        {
-          use core::panic;
-            use postgres::types::ToSql;
-            // println!("{}","billionaire");
-            // let mut command = String::new();
-            let mut select_value = String::new();
-            let mut where_value = String::new();
-            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut selection = String::new();
-            let mut between = String::new();
-            // between.push_str(&format!("AND {} BETWEEN  {} AND {};"));
-
-            if $model.len() != 0 {
-                $(
-                    let selectvalue = format!("{},",$values);
-                    select_value.push_str(&selectvalue);
-
-                    let selectvalue = format!("'{}',",$values);
-                    selection.push_str(&selectvalue);
-                )*
-                let mut idx = 0;
-                $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} AND ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                )*
-                let where_value = where_value.trim_end_matches("AND ").to_string();
-                // println!("{}",idx);
-                $(
-                    value.push(&$where_by);
-                )*
-                let select_value = select_value.trim_end_matches(",");
-                let mut where_value = where_value.trim_end_matches("AND ").to_string();
-                let selection = selection.trim_end_matches(",");
-
-                where_value.push_str(&format!("AND {} BETWEEN  '{}' AND '{}'",$value,$first,$second));
-                                // println!("{}",where_value);
-                // println!("{}",select_value);
-                let query = format!("SELECT {} FROM {} WHERE {} LIMIT 1;",select_value,$model,where_value);
-                // println!("{}",query);
-                // println!("{:?}",value);
-                // command.push_str(&query);
-                let client = $connection.query(&query,&value).unwrap();
-                // println!("{:?}","client");
-
-                find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-        }
-    };
-    // * included or //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-         $($select_value:expr),*
-    },
-    conditions : {
-        or => {
-            $($or_value_or:expr => $or_value_orr:expr),*
-        }
-    }) => {
-        {
-          use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut or_values = String::new();
-                let mut or_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selection = String::new();
-
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    or_values.push_str(&format!("{} = ${} OR ",$or_value_or,idx));
-                    or_value.push(&$or_value_orr);
-                )*
-
-                let or_values = or_values.trim_end_matches("OR ");
-                let format = format!("SELECT {} FROM {} WHERE {} LIMIT 1;",select_value,$model,or_values);
-                // println!("{}",format);
-                let client = $connection.query(&format,&or_value).unwrap();
-                find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-         $($select_value:expr),*
-    },
-    conditions : {
-        or => {
-            $($or_value1:expr => $or_value2:expr),*
-        },
-        $($and_values:expr => $and_value:expr),*
-    }
-) => {
-        {
-          use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selection = String::new();
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} OR ",$and_values,idx));
-                    and_value.push(&$and_value);
-                )*
-
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                    and_value.push(&$and_value);
-                )*
-                let mut and_values = and_values.trim_end_matches("AND ").to_string();
-                // println!("{}",and_values);
-                // println!("{:?}",and_value);
-                let format = format!("SELECT {} FROM {} WHERE {} LIMIT 1;",select_value,$model,and_values);
-                // println!("{}",format);
-                let client = $connection.query(&format,&and_value).unwrap();
-                // println!("{:?}",client);
-                find_many!(@format $connection,$model,client)
-        }
-    };
-    //* included or order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-         $($select_value:expr),*
-    },
-    conditions:{
-        or => {$($or_values:expr => $or_value:expr),*}
-    },
-    order : {$($target:expr => $order:expr),*}) => {
-        {
-          use core::panic;
-          use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut order = String::new();
-                let mut selection = String::new();
-
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-
-                let mut idx = 0;
-
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} OR ",$or_values,idx));
-                    and_value.push(&$or_value);
-                )*
-
-                let and_values = and_values.trim_end_matches("AND ");
-                // println!("{}",and_values);
-                // println!("{:?}",and_value);
-                $(
-                    if !["asc","desc"].contains(&$order) {
-                        panic!("Provide correct order either \"asc\" nor \"desc\"");
                     }
-                    let order_ = format!("{} {},",$target,$order);
-                    order.push_str(&order_);
-                )*
-
-                let order = order.trim_end_matches(",");
-
-                let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {} LIMIT 1;",select_value,$model,and_values,order);
-
-                // println!("{}",format);
-                let client = $connection.query(&format,&and_value).unwrap();
-                find_many!(@format $connection,$model,client)
+                    "float4" => {
+                        let value: f32 = billionaire.get(name);
+                        value.to_string()
+                    }
+                    "time" => {
+                        let value: NaiveTime = billionaire.get(name);
+                        value.to_string()
+                    }
+                    "uuid" => {
+                        let value: Uuid = billionaire.get(name);
+                        value.to_string()
+                    }
+                    "bool" => {
+                        let value: bool = billionaire.get(name);
+                        value.to_string()
+                    }
+                    _ => {
+                        panic!("")
+                    }
+                };
+                map.insert(name.to_string(), value);
+                collection.push(map)
+            }
+            // println!("{:?}",collection);
+            billionaires.push(collection);
         }
-    };
-    //* included or limit skip //completed
-//     (connection => $client:expr,
-//         model:$model:expr,
-//         select:{
-//          $($select_value:expr),*
-//     },
-//     conditions:{
-//         or => {$($or_values:expr => $or_value:expr),*}
-//     },
-//     limit:$limit:expr,
-//     skip:$skip:expr
-// ) => {
-//         {
-//             let mut selectvalue = String::new();
-//             let mut or_values = String::new();
-//             let mut or_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-//         $(
-//             selectvalue.push_str(&format!("{},",$select_value));
-//         )*
-//         let select_value = selectvalue.trim_end_matches(",");
-//         // println!("{}",select_value);
-//         let mut idx = 0;
-//         $(
-//             idx+=1;
-//             or_values.push_str(&format!("{} = ${} OR ",$or_values,idx));
-//             or_value.push(&$or_value);
-//         )*
-//         let or_values = or_values.trim_end_matches("OR ");
-//         // println!("{}",or_values);
-//         // println!("{:?}",or_value);
-//         let format = format!("SELECT {} FROM {} WHERE {} LIMIT {} OFFSET {};",select_value,$model,or_values,$limit,$skip);
-//         println!("{}",format);
-//         let response = $client.query(&format,&or_value).unwrap();
-//         response
-//     }
-//     };
-    // * included and or limit //completed
-    // (connection => $client:expr,
-    //         model:$model:expr,
-    //         select:{
-    //          $($select_value:expr),*
-    //     },
-    //     conditions:{
-    //         or =>  {$($or_value1:expr => $or_value2:expr),*},
-    //         $($and_values:expr => $and_value:expr),*
-    //     },
-    //     limit:$limit:expr
-    // ) => {
-    //         {
-    //             let mut selectvalue = String::new();
-    //             let mut and_values = String::new();
-    //             let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-    //         $(
-    //             selectvalue.push_str(&format!("{},",$select_value));
-    //         )*
-    //         let select_value = selectvalue.trim_end_matches(",");
-    //         // println!("{}",select_value);
-    //         let mut idx = 0;
-    //         $(
-    //             idx+=1;
-    //             and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-    //             and_value.push(&$and_value);
-    //         )*
-    //         $(
-    //             idx+=1;
-    //             and_values.push_str(&format!("{} = ${} OR ",$and_values,idx));
-    //             and_value.push(&$and_value);
-    //         )*
-    //         let and_values = and_values.trim_end_matches("AND ");
-    //         // println!("{}",and_values);
-    //         // println!("{:?}",and_value);
-    //         let format = format!("SELECT {} FROM {} WHERE {} LIMIT {};",select_value,$model,and_values,$limit,$skip);
-    //         println!("{}",format);
-    //         let response = $client.query(&format,&and_value).unwrap();
-    //         response
-    //     }
-    // };
+        billionaires
+    }};
+}
+
+///
+/// # Usage
+///
+/// ```
+/// let find = find_one! {
+///     connection => postgres,
+///     model:"place",
+///     select:{
+///         "name"
+///     },
+///     conditions:{
+///         and => {
+///             "name" => "billionairehari"
+///         },
+///         or => {
+///             "name" => "billionairehari"
+///         }
+///     },
+///     order:{
+///         "name" => "asc"
+///     }
+/// };
+/// ```
+///
+///
+#[macro_export]
+macro_rules! find_one {
     // * included and or order //completed
     (connection => $connection:expr,
-            model:$model:expr,
-            select:{
-             $($select_value:expr),*
-        },
-        conditions:{
-            or =>  {$($or_value1:expr => $or_value2:expr),*},
-            $($and_values:expr => $and_value:expr),*
-        },
-        order : {$($target:expr => $order:expr),*}
+            model:$model:expr
+            $(,select:{
+                $($select_value:expr),*
+            })?
+        $(,conditions:{
+            $(and => {
+                $($and_values:expr => $and_value:expr),*
+            })?
+            $(,)?
+            $(or =>  {
+                $($or_value1:expr => $or_value2:expr),*
+            })?
+        })?
+        $(,order : {$($target:expr => $order:expr),*})?
     ) =>
     {
-            {
-              use core::panic;
-              use postgres::types::ToSql;
+        {
+            use core::panic;
+            use postgres::types::ToSql;
+            use rusty_postgres::formats;
 
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut order = String::new();
-                let mut selection = String::new();
+            let mut selectvalue = String::new();
+            let mut conditions = String::new();
+            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
+            let mut order = String::new();
+            // let mut selection = String::new();
             $(
+                $(
                 selectvalue.push_str(&format!("{},",$select_value));
-                selection.push_str(&format!("'{}',",$select_value));
-            )*
+                // selection.push_str(&format!("'{}',",$select_value));
+                )*
+            )?
             let select_value = selectvalue.trim_end_matches(",");
-            let selection = selection.trim_end_matches(",");
+            // let selection = selection.trim_end_matches(",");
             // println!("{}",select_value);
             let mut idx = 0;
             $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} OR ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
+                $(
+                $(
+                    idx+=1;
+                    conditions.push_str(&format!("{} = ${} AND ",$and_values,idx));
+                    and_value.push(&$and_value);
+                )*
+                )?
+            )?
+            // $()?
             $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
-            let and_values = and_values.trim_end_matches("AND ");
+                $(
+                    $(
+                        idx+=1;
+                        conditions.push_str(&format!("{} = ${} OR ",$or_value1,idx));
+                        and_value.push(&$or_value2);
+                    )*
+                )?
+            )?
+            let conditions = conditions.trim_end_matches("AND ");
+            let conditions = conditions.trim_end_matches("OR ");
             $(
-                if !["asc","desc"].contains(&$order) {
+                $(
+                if !["asc","desc","ASC","DESC"].contains(&$order) {
                     panic!("Provide correct order either \"asc\" nor \"desc\"");
                 }
-                let order_ = format!("{} {},",$target,$order);
-                order.push_str(&order_);
-            )*
+                else {
+                    let order_ = format!("{} {},",$target,$order.to_uppercase());
+                    order.push_str(&order_);
+                }
+                )*
+            )?
             let order = order.trim_end_matches(",");
             // println!("{}",and_values);
             // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {} LIMIT 1;",select_value,$model,and_values,order);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
+            let mut select = format!("SELECT ");
+            if select_value.len() != 0 {
+                let selection = format!("{}",select_value);
+                select.push_str(&selection);
+            }
+            else {
+                let selection = format!("*");
+                select.push_str(&selection);
+            }
+            select.push_str(&format!(" FROM {}",$model));
+            if conditions.len() != 0 {
+                select.push_str(&format!(" WHERE {}",conditions));
+            }
+            if order.len() != 0 {
+                select.push_str(&format!(" ORDER BY {}",order));
+            }
+            select.push_str(" LIMIT 1");
+            // println!("{}",select);
+            // FROM {} WHERE {} ORDER BY {} LIMIT 1;
+            let client = $connection.query(&select,&and_value);
+            match client {
+                Err(error) => {
+                    Err(io::Error::new(io::ErrorKind::NotFound, error))
+                },
+                Ok(client) => {
+                    let client = formats!{
+                             client
+                    };
+                    Ok(client)
+                }
+            }
         }
     };
-    // * included and or limit skip //completed
-//     (connection => $client:expr,
-//         model:$model:expr,
-//         select:{
-//          $($select_value:expr),*
-//     },
-//     conditions:{
-//         or =>  {$($or_value1:expr => $or_value2:expr),*},
-//         $($and_values:expr => $and_value:expr),*
-//     },
-//     limit:$limit:expr,
-//     skip:$skip:expr
-// ) => {
-//         {
-//             let mut selectvalue = String::new();
-//             let mut and_values = String::new();
-//             let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-//         $(
-//             selectvalue.push_str(&format!("{},",$select_value));
-//         )*
-//         let select_value = selectvalue.trim_end_matches(",");
-//         // println!("{}",select_value);
-//         let mut idx = 0;
-//         $(
-//             idx+=1;
-//             and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-//             and_value.push(&$and_value);
-//         )*
-//         $(
-//             idx+=1;
-//             and_values.push_str(&format!("{} = ${} OR ",$and_values,idx));
-//             and_value.push(&$and_value);
-//         )*
-//         let and_values = and_values.trim_end_matches("AND ");
-//         // println!("{}",and_values);
-//         // println!("{:?}",and_value);
-//         let format = format!("SELECT {} FROM {} WHERE {} LIMIT {} OFFSET {};",select_value,$model,and_values,$limit,$skip);
-//         println!("{}",format);
-//         let response = $client.query(&format,&and_value).unwrap();
-//         response
-//     }
-//     };
-    // * included and order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-        $($select_value:expr),*
-    },
-    conditions : {
-        $($and_values:expr => $and_value:expr),*
-    },
-    order : {$($target:expr => $order:expr),*}
-) => {
-        {
-          use core::panic;
-          use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut order = String::new();
-                let mut selection = String::new();
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                    and_value.push(&$and_value);
-                )*
-                $(
-                    if !["asc","desc"].contains(&$order) {
-                        panic!("Provide correct order either \"asc\" nor \"desc\"");
-                    }
-                    let order_ = format!("{} {},",$target,$order);
-                    order.push_str(&order_);
-                )*
-                let order = order.trim_end_matches(",");
-                let and_values = and_values.trim_end_matches("AND ");
-                // println!("{}",and_values);
-                // println!("{:?}",and_value);
-                let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {} LIMIT 1;",select_value,$model,and_values,order);
-                // println!("{}",format);
-                let client = $connection.query(&format,&and_value).unwrap();
-                find_many!(@format $connection,$model,client)
-        }
-    };
-
 }
 
 #[macro_export]
@@ -1376,1888 +949,464 @@ macro_rules! delete_table {
     }};
 }
 
+/// ## Returns
+/// ```
+/// Result<Vec<Vec<std::collections::BTreeMap<String, String>>>, io::Error>
+/// ```
 /// # Example
-/// 1
+/// ## Basic
 /// ```
-/// let find = find_many! {
+///  let find = find_many! {
 ///     connection => postgres,
-///     model:"elonmusk",
-///     condition:{
-///         "story" => "haribillionaire"
-///     }
-/// };
-/// `````
-/// 2`
-/// ```
-/// let find = find_many! {
-///     connection => postgres,
-///     model:"elonmusk",
-///     select:{
-///         "story"
+///     model:"billionaires",
+///     select:{               // optional
+///         "place"
 ///     },
-///     condition:{
-///         "story" => "haribillionaire"
-///     }
-/// };
-/// ```
-/// 10
-/// ```
-/// let find = find_many! {
-///     connection => postgres,
-///     model:"elonmusk",
-///     conditions:{
-///         or => {
-///             "story" => "billionairehari"
+///     case:{
+///     (
+///         "place" => ">22",
+///         "place" => "<22",
+///         "place" => "=22"
+///         ) => (ok:"billion_dollar",
+///         ok:"billionaire",
+///         ok:"billionaire"
+///         ,else:"trillionaire"
+///     ) => "status"
+///     },
+///     conditions:{           // optional
+///         and => {
+///             "place" => "san"
 ///         },
-///         "story" => "billionairehari"
+///         or => {
+///             "place" => "san"
+///         }
+///     },      
+///     inside:{
+///         "place" => {
+///             match:"user_id",
+///             select:{
+///                 "name"
+///             },
+///             conditions:{
+///                 and => {
+///                     "name" => "billionaire"
+///                 }
+///             },
+///             order:6,
+///             limit:6
+///         }
+///     },               
+///     order:{                // optional
+///         "place" => "asc"
 ///     },
-///     limit:0,
-///     skip:0,
-///     order:{
-///         "story" => "asc"
-///     }
-/// };
+///     limit:24,              // optional
+///     skip:24                // optional
+///  };
+///  println!("{:?}", find);
 /// ```
+///
+///
+/// ## Geography Search
+///
 /// ```
-/// let location = nearby_location! {
-/// connection => postgres,
-/// model:"shop",
-/// select:{
-///     "other_than_location_type"
-/// },
-/// location:{
-///     lattitude:"12.971599",
-///     longitude:"77.594566"
-/// },
-/// select_from:{
-///     "location"
-/// }
-/// };
-/// ```
-/// /// ```
-/// let location = nearby_location! {
-/// connection => postgres,
-/// model:"shop",
-/// select:{
-///     "other_than_location_type"
-/// },
-/// location:{
-///     lattitude:"12.971599",
-///     longitude:"77.594566"
-/// },
-/// select_from:{
-///     "location"
-/// }
+/// let find = find_many! {
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{            // optional
+///         "place"
+///     },
+///     within:{
+///         lattitude:"12.971599",
+///         longitude:"77.594566",
+///         within:6                // optional
+///     },
+///     also_include:{
+///         "location"
+///     },
+///     limit:6             // optional
 /// };
 /// ```
 #[macro_export]
 macro_rules! find_many {
-
-    (@format $connection:expr,$model:expr,$client:expr) => {
-        {
-            use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-            use std::collections::BTreeMap;
-            use uuid::Uuid;
-            use std::panic;
-
-            let mut billionaires = Vec::new();
-            for billionaire in $client.iter() {
-                let mut collection = Vec::new();
-                let billionaire_column = billionaire.columns();
-                for billionaires in billionaire_column.iter() {
-                    let mut map = BTreeMap::new();
-
-                    let name = billionaires.name();
-                    let billion = billionaires.type_().name();
-
-                    // println!("{:?}", billion);
-
-                    let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-        }
-      };
-    (connection => $connection:expr,model => $model:expr) => {{
-                let query = format!("SELECT * FROM {}", $model);
-                let client = $connection.query(&query, &[]).unwrap();
-                find_many!(@format $connection,$model,client)
-    }};
-    // * model //completed
-    (connection => $connection:expr,model:$model:expr) => {
-            {
-                use core::panic;
-                // let mut command = String::new();
-                if $model.len() != 0 {
-                    let client = format!("SELECT * FROM {} ;",$model);
-                    let client = $connection.query(&client,&[]).unwrap();
-                    // println!("{}",client);
-                    // command.push_str(&query);
-                    find_many!(@format $connection,$model,client)
-                }
-                else {
-                    panic!("\x1b[44mProvide Model Name\x1b[0m")
-                }
-        }
-    };
-    // * where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    condition:{
-        $($value_where:expr => $where_by:expr),*
-    }) =>
-    {
-        {
-         use core::panic;
-         use postgres::types::ToSql;
-
-           let mut command = String::new();
-           // let mut select_value = String::new();
-           let mut where_value = String::new();
-           let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-           // let mut selection = String::new();
-           if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                where_value.push_str(&wherevalue);
-            )*
-            let where_value = where_value.trim_end_matches("OR ").to_string();
-           // println!("{}",idx);
-           $(
-            value.push(&$where_by);
-           )*
-           let where_value = where_value.trim_end_matches("AND ");
-           // println!("{:?}",where_value);
-           // let len = params.len();
-
-           let query = format!("SELECT * FROM {} WHERE {};",$model,where_value);
-           // println!("{}",query);
-           // println!("{:?}",value);
-           command.push_str(&query);
-           let client = $connection.query(&command,&value).unwrap();
-           find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-        }
-   };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($values:expr),*
-    },
-    condition:{
-        $($value_where:expr => $where_by:expr),*
-    }) => {
-            {
-              use core::panic;
-              use postgres::types::ToSql;
-
-                let mut command = String::new();
-                let mut select_value = String::new();
-                let mut where_value = String::new();
-                let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selection = String::new();
-                if $model.len() != 0 {
-                    $(
-                        let selectvalue = format!("{},",$values);
-                        select_value.push_str(&selectvalue);
-
-                        let selectvalue = format!("'{}',",$values);
-                        selection.push_str(&selectvalue);
-                    )*
-                    let mut idx = 0;
-                    $(
-                            idx +=1;
-                            let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                            where_value.push_str(&wherevalue);
-                    )*
-                    let where_value = where_value.trim_end_matches("OR ").to_string();
-                    // println!("{}",idx);
-                    $(
-                        value.push(&$where_by);
-                    )*
-                    let select_value = select_value.trim_end_matches(",");
-                    let selection = selection.trim_end_matches(",");
-                    let where_value = where_value.trim_end_matches("AND ");
-                    // println!("{:?}",where_value);
-                    // let len = params.len();
-
-                    let query = format!("SELECT {} FROM {} WHERE {};",select_value,$model,where_value);
-                    // println!("{}",query);
-                    // println!("{:?}",value);
-                    command.push_str(&query);
-                    let client = $connection.query(&command,&value).unwrap();
-                    find_many!(@format $connection,$model,client)
-                }
-                else {
-                    panic!("\x1b[44mProvide Model Name\x1b[0m")
-                }
-        }
-    };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        }
-    }) => {
-            {
-                use core::panic;
-                use postgres::types::ToSql;
-
-                let mut command = String::new();
-                let mut where_value = String::new();
-                let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                if $model.len() != 0 {
-                    let mut idx = 0;
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                    let where_value = where_value.trim_end_matches("OR ").to_string();
-                        // println!("{}",idx);
-                    $(
-                        value.push(&$where_by);
-                    )*
-                    let where_value = where_value.trim_end_matches("AND ");
-                        // println!("{:?}",where_value);
-                        // let len = params.len();
-
-                    let query = format!("SELECT * FROM {} WHERE {};",$model,where_value);
-                        // println!("{}",query);
-                        // println!("{:?}",value);
-                    command.push_str(&query);
-                    let client = $connection.query(&command,&value).unwrap();
-                    find_many!(@format $connection,$model,client)
-                }
-                else {
-                    panic!("\x1b[44mProvide Model Name\x1b[0m")
-                }
-            }
-        };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        },
-        $($value_where_and:expr => $where_by_and:expr)*
-    }) => {
-            {
-                use core::panic;
-                use postgres::types::ToSql;
-
-                let mut command = String::new();
-                let mut where_value = String::new();
-                let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                if $model.len() != 0 {
-                    let mut idx = 0;
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                    let where_value = where_value.trim_end_matches("OR ").to_string();
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                      // println!("{}",idx);
-                    $(
-                        value.push(&$where_by);
-                    )*
-                    $(
-                        value.push(&$where_by_and);
-                    )*
-                    let where_value = where_value.trim_end_matches("AND ");
-                      // println!("{:?}",where_value);
-                      // let len = params.len();
-
-                    let query = format!("SELECT * FROM {} WHERE {};",$model,where_value);
-                      // println!("{}",query);
-                      // println!("{:?}",value);
-                    command.push_str(&query);
-                    let client = $connection.query(&command,&value).unwrap();
-                    find_many!(@format $connection,$model,client)
-                }
-                else {
-                    panic!("\x1b[44mProvide Model Name\x1b[0m")
-                }
-            }
-        };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        },
-            $($value_where_and:expr => $where_by_and:expr)*
-    },limit:$limit:expr) =>
-    {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut command = String::new();
-            let mut where_value = String::new();
-            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            if $model.len() != 0 {
-                let mut idx = 0;
-                $(
-                    idx +=1;
-                        let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                )*
-                let where_value = where_value.trim_end_matches("OR ").to_string();
-                $(
-                    idx +=1;
-                    let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                    where_value.push_str(&wherevalue);
-                )*
-                        // println!("{}",idx);
-                $(
-                    value.push(&$where_by);
-                )*
-                $(
-                    value.push(&$where_by_and);
-                )*
-                let where_value = where_value.trim_end_matches("AND ");
-                        // println!("{:?}",where_value);
-                        // let len = params.len();
-
-                let query = format!("SELECT * FROM {} WHERE {} LIMIT {};",$model,where_value,$limit);
-                        // println!("{}",query);
-                        // println!("{:?}",value);
-                command.push_str(&query);
-                let client = $connection.query(&command,&value).unwrap();
-                find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-        }
-    };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        },
-        $($value_where_and:expr => $where_by_and:expr)*
-    },limit:$limit:expr,skip:$skip:expr) => {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut command = String::new();
-            let mut where_value = String::new();
-            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            if $model.len() != 0 {
-                let mut idx = 0;
-                $(
-                    idx +=1;
-                    let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                    where_value.push_str(&wherevalue);
-                )*
-                let where_value = where_value.trim_end_matches("OR ").to_string();
-                $(
-                    idx +=1;
-                    let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                    where_value.push_str(&wherevalue);
-                )*
-                      // println!("{}",idx);
-                $(
-                    value.push(&$where_by);
-                )*
-                $(
-                    value.push(&$where_by_and);
-                )*
-                let where_value = where_value.trim_end_matches("AND ");
-                      // println!("{:?}",where_value);
-                      // let len = params.len();
-
-                let query = format!("SELECT * FROM {} WHERE {} LIMIT {} OFFSET {};",$model,where_value,$limit,$skip);
-                      // println!("{}",query);
-                      // println!("{:?}",value);
-                command.push_str(&query);
-                let client = $connection.query(&command,&value).unwrap();
-                find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-        }
-    };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        },
-        $($value_where_and:expr => $where_by_and:expr)*
-    },limit:$limit:expr,
-    skip:$skip:expr,
-    order:{
-        $($order_by:expr => $order:expr),*
-    }) => {
-            {
-                use core::panic;
-                use postgres::types::ToSql;
-
-                let mut command = String::new();
-                let mut where_value = String::new();
-                let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut order = String::new();
-                if $model.len() != 0 {
-                    let mut idx = 0;
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                    let where_value = where_value.trim_end_matches("OR ").to_string();
-                    $(
-                        let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                        order.push_str(&order_by);
-                    )*
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                      // println!("{}",idx);
-                    $(
-                        value.push(&$where_by);
-                    )*
-                    $(
-                        value.push(&$where_by_and);
-                    )*
-                    let where_value = where_value.trim_end_matches("AND ");
-                    let order = order.trim_end_matches("AND ");
-                      // println!("{:?}",where_value);
-                      // let len = params.len();
-
-                    let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {};",$model,where_value,order,$limit,$skip);
-                      // println!("{}",query);
-                      // println!("{:?}",value);
-                    command.push_str(&query);
-                    let client = $connection.query(&command,&value).unwrap();
-                    find_many!(@format $connection,$model,client)
-                }
-                else {
-                    panic!("\x1b[44mProvide Model Name\x1b[0m")
-                }
-        }
-    };
-    // * select, where,limit,skip,order //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    condition:{
-        $($value_where_and:expr => $where_by_and:expr)*
-    },
-    limit:$limit:expr,
-    skip:$skip:expr,
-    order:{
-            $($order_by:expr => $order:expr),*
-    }) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut order = String::new();
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                order.push_str(&order_by);
-            )*
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-            // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let order = order.trim_end_matches("AND ");
-            // println!("{:?}",where_value);
-            // let len = params.len();
-
-            let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {};",$model,where_value,order,$limit,$skip);
-            // println!("{}",query);
-            // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-};
-    // * select, where,limit,order //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    condition:{
-        $($value_where_and:expr => $where_by_and:expr)*
-    },
-    limit:$limit:expr,
-    order:{
-        $($order_by:expr => $order:expr),*
-    }) => {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut command = String::new();
-            let mut where_value = String::new();
-            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut order = String::new();
-            if $model.len() != 0 {
-                let mut idx = 0;
-                $(
-                    let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                    order.push_str(&order_by);
-                )*
-                $(
-                    idx +=1;
-                    let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                    where_value.push_str(&wherevalue);
-                )*
-                // println!("{}",idx);
-                $(
-                    value.push(&$where_by_and);
-                )*
-                let where_value = where_value.trim_end_matches("AND ");
-                let order = order.trim_end_matches("AND ");
-                // println!("{:?}",where_value);
-                // let len = params.len();
-
-                let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} ;",$model,where_value,order,$limit);
-                // println!("{}",query);
-                // println!("{:?}",value);
-                command.push_str(&query);
-                let client = $connection.query(&command,&value).unwrap();
-                find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-      }
-    };
-    // * select, where,skip,order //completed
     (connection => $connection:expr,
         model:$model:expr,
-        condition:{
-            $($value_where_and:expr => $where_by_and:expr)*
-        },
-        skip:$skip:expr,
-        order:{
-                $($order_by:expr => $order:expr),*
-    }) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut order = String::new();
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                order.push_str(&order_by);
-            )*
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-                // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let order = order.trim_end_matches("AND ");
-                // println!("{:?}",where_value);
-                // let len = params.len();
-
-            let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} OFFSET {};",$model,where_value,order,$skip);
-                // println!("{}",query);
-                // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-    };
-    // * select, where,order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        condition:{
-            $($value_where_and:expr => $where_by_and:expr)*
-        },
-        order:{
-                $($order_by:expr => $order:expr),*
-        }) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut order = String::new();
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                order.push_str(&order_by);
-            )*
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-              // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let order = order.trim_end_matches("AND ");
-              // println!("{:?}",where_value);
-              // let len = params.len();
-
-            let query = format!("SELECT * FROM {} WHERE {} ORDER BY {};",$model,where_value,order,$limit,$skip);
-              // println!("{}",query);
-              // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-};
-    // * select, where,order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-            $($select:expr),*
-        },
-        condition:{
-            $($value_where_and:expr => $where_by_and:expr),*
-        },
-        order:{
-                $($order_by:expr => $order:expr),*
-        }) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut order = String::new();
-        let mut select = String::new();
-
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                let selectt = format!("{},",$select);
-                select.push_str(&selectt);
-            )*
-            $(
-                let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                order.push_str(&order_by);
-            )*
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-              // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let order = order.trim_end_matches("AND ");
-            let select = select.trim_end_matches(",");
-              // println!("{:?}",where_value);
-              // let len = params.len();
-
-            let query = format!("SELECT {} FROM {} WHERE {} ORDER BY {};",select,$model,where_value,order);
-              // println!("{}",query);
-              // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-};
-    // * select, where,order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-            $($select:expr),*
-        },
-        condition:{
-            $($value_where_and:expr => $where_by_and:expr),*
-        },
-        limit:$limit:expr) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut select = String::new();
-
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                let selectt = format!("{},",$select);
-                select.push_str(&selectt);
-            )*
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-              // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let select = select.trim_end_matches(",");
-              // println!("{:?}",where_value);
-              // let len = params.len();
-
-            let query = format!("SELECT {} FROM {} WHERE {} LIMIT {};",select,$model,where_value,$limit);
-              // println!("{}",query);
-              // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-};
-    // * select, where,order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{
-            $($select:expr),*
-        },
-        condition:{
-            $($value_where_and:expr => $where_by_and:expr),*
-        }) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut select = String::new();
-
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                let selectt = format!("{},",$select);
-                select.push_str(&selectt);
-            )*
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-              // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let select = select.trim_end_matches(",");
-              // println!("{:?}",where_value);
-              // let len = params.len();
-
-            let query = format!("SELECT {} FROM {} WHERE {} ;",select,$model,where_value);
-              // println!("{}",query);
-              // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-};
-    // * select, where,order //completed
-    (connection => $connection:expr,
-        model:$model:expr,
-        condition:{
-            $($value_where_and:expr => $where_by_and:expr),*
-        },
-        limit:$limit:expr) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut command = String::new();
-        let mut where_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-        if $model.len() != 0 {
-            let mut idx = 0;
-            $(
-                idx +=1;
-                let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                where_value.push_str(&wherevalue);
-            )*
-              // println!("{}",idx);
-            $(
-                value.push(&$where_by_and);
-            )*
-            let where_value = where_value.trim_end_matches("AND ");
-            let select = select.trim_end_matches(",");
-              // println!("{:?}",where_value);
-              // let len = params.len();
-
-            let query = format!("SELECT {} FROM {} WHERE {} LIMIT {};",select,$model,where_value,$limit);
-              // println!("{}",query);
-              // println!("{:?}",value);
-            command.push_str(&query);
-            let client = $connection.query(&command,&value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-        else {
-            panic!("\x1b[44mProvide Model Name\x1b[0m")
-        }
-    }
-};
-    // * select where //completed
-    (connection => $connection:expr,
-     model:$model:expr,
-     conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        },
-        $($value_where_and:expr => $where_by_and:expr)*
-    },
-    skip:$skip:expr,
-    order:{
-        $($order_by:expr => $order:expr),*
-    }) => {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut command = String::new();
-            let mut where_value = String::new();
-            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut order = String::new();
-            if $model.len() != 0 {
-                let mut idx = 0;
-                $(
-                    idx +=1;
-                    let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                    where_value.push_str(&wherevalue);
-                )*
-                let where_value = where_value.trim_end_matches("OR ").to_string();
-                $(
-                    let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                    order.push_str(&order_by);
-                )*
-                $(
-                    idx +=1;
-                    let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                    where_value.push_str(&wherevalue);
-                )*
-                      // println!("{}",idx);
-                $(
-                    value.push(&$where_by);
-                )*
-                $(
-                    value.push(&$where_by_and);
-                )*
-                let where_value = where_value.trim_end_matches("AND ");
-                let order = order.trim_end_matches("AND ");
-                      // println!("{:?}",where_value);
-                      // let len = params.len();
-
-                let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} OFFSET {};",$model,where_value,order,$skip);
-                      // println!("{}",query);
-                      // println!("{:?}",value);
-                command.push_str(&query);
-                let client = $connection.query(&command,&value).unwrap();
-                find_many!(@format $connection,$model,client)
-            }
-            else {
-                panic!("\x1b[44mProvide Model Name\x1b[0m")
-            }
-        }
-    };
-    // * select where //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    conditions:{
-        or => {
-            $($value_where:expr => $where_by:expr),*
-        },
-        $($value_where_and:expr => $where_by_and:expr)*
-    },order:{
-        $($order_by:expr => $order:expr),*
-    }) => {
-            {
-                use core::panic;
-                use postgres::types::ToSql;
-
-                let mut command = String::new();
-                let mut where_value = String::new();
-                let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut order = String::new();
-                if $model.len() != 0 {
-                    let mut idx = 0;
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} OR ",$value_where,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                    let where_value = where_value.trim_end_matches("OR ").to_string();
-                    $(
-                        let order_by = format!("{} {} AND ",$order_by,$order.to_uppercase());
-                        order.push_str(&order_by);
-                    )*
-                    $(
-                        idx +=1;
-                        let wherevalue = format!("{} = ${} AND ",$value_where_and,idx);
-                        where_value.push_str(&wherevalue);
-                    )*
-                      // println!("{}",idx);
-                    $(
-                        value.push(&$where_by);
-                    )*
-                    $(
-                        value.push(&$where_by_and);
-                    )*
-                    let where_value = where_value.trim_end_matches("AND ");
-                    let order = order.trim_end_matches("AND ");
-                      // println!("{:?}",where_value);
-                      // let len = params.len();
-
-                    let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} ;",$model,where_value,order);
-                      // println!("{}",query);
-                      // println!("{:?}",value);
-                    command.push_str(&query);
-                    let client = $connection.query(&command,&value).unwrap();
-                    find_many!(@format $connection,$model,client)
-                }
-                else {
-                    panic!("\x1b[44mProvide Model Name\x1b[0m")
-                }
-            }
-        };
-    // * included or //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions : {
-        or => {
-            $($or_value_or:expr => $or_value_orr:expr),*
-        }
-    }) => {
-            {
-                use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut or_values = String::new();
-                let mut or_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selection = String::new();
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-
-                    let select = format!("'{}',",$select_value);
-                    selection.push_str(&select);
-                )*
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                    // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    or_values.push_str(&format!("{} = ${} OR ",$or_value_or,idx));
-                    or_value.push(&$or_value_orr);
-                )*
-                let or_values = or_values.trim_end_matches("OR ");
-                    // println!("{}",or_values);
-                    // println!("{:?}",or_value);
-                let format = format!("SELECT {} FROM {} WHERE {};",select_value,$model,or_values);
-                // println!("{}",format);
-                let client = $connection.query(&format,&or_value).unwrap();
-                find_many!(@format $connection,$model,client)
-        }
-    };
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    }) => {
-        {
-            use postgres::types::ToSql;
-
-            let mut selectvalue = String::new();
-            let mut selection = String::new();
-            $(
-                selectvalue.push_str(&format!("{},",$select_value));
-
-                let select = format!("'{}',",$select_value);
-                selection.push_str(&select);
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            let selection = selection.trim_end_matches(",");
-                    // println!("{}",select_value);
-            let mut idx = 0;
-                    // println!("{}",or_values);
-                    // println!("{:?}",or_value);
-            let format = format!("SELECT {} FROM {};",select_value,$model);
-                    // println!("{}",format);
-            let client = $connection.query(&format,&[]).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions : {
-        or => {
-            $($or_value1:expr => $or_value2:expr),*
-        },
-            $($and_values:expr => $and_value:expr),*
-    }
-    ) =>
-    {
-        {
-            use postgres::types::ToSql;
-
-            let mut selectvalue = String::new();
-            let mut and_values = String::new();
-            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut selection = String::new();
-            $(
-                selectvalue.push_str(&format!("{},",$select_value));
-                let select = format!("'{}',",$select_value);
-                selection.push_str(&select);
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            let selection = selection.trim_end_matches(",");
-            // println!("{}",select_value);
-            let mut idx = 0;
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                and_value.push(&$or_value2);
-            )*
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
-            let and_values = and_values.trim_end_matches("AND ");
-            // println!("{}",and_values);
-            // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {};",select_value,$model,and_values);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-    //* included or order //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions:{
-        or => {$($or_values:expr => $or_value:expr),*}
-    },
-    order : {$($target:expr => $order:expr),*}) => {
-    {
-        use core::panic;
-        use postgres::types::ToSql;
-
-        let mut selectvalue = String::new();
-        let mut or_values = String::new();
-        let mut or_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut order = String::new();
-        let mut selection = String::new();
+        $(match:$model_value:expr)?
+        $(,select:{$($select_value:expr),*})?
         $(
-            selectvalue.push_str(&format!("{},",$select_value));
-            selection.push_str(&format!("'{}',",$select_value));
-        )*
-        let select_value = selectvalue.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-                    // println!("{}",select_value);
-        let mut idx = 0;
-        $(
-            idx+=1;
-            or_values.push_str(&format!("{} = ${} OR ",$or_values,idx));
-            or_value.push(&$or_value);
-        )*
-        let or_values = or_values.trim_end_matches("OR ");
-                    // println!("{}",or_values);
-                    // println!("{:?}",or_value);
-        $(
-            if !["asc","desc"].contains(&$order) {
-                panic!("Provide correct order either \"asc\" nor \"desc\"");
+            ,case:{
+                    $(($($key:expr => $value:expr),*) => ($(ok:$ok:expr),*,else:$else:expr) => $case:expr),*
             }
-            else {
-                let order_ = format!("{} {},",$target,$order);
-                order.push_str(&order_);
-            }
-        )*
-        let order = order.trim_end_matches(",");
-        let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {};",select_value,$model,or_values,order);
-        // println!("{}",format);
-        let client = $connection.query(&format,&or_value).unwrap();
-        find_many!(@format $connection,$model,client)
-    }
-    };
-    //* included or limit skip //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions:{
-        or => {$($or_values:expr => $or_value:expr),*}
-    },
-    limit:$limit:expr,
-    skip:$skip:expr
-    ) => {
-    {
-        let mut selectvalue = String::new();
-        let mut or_values = String::new();
-        let mut or_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut selection = String::new();
-        $(
-            selectvalue.push_str(&format!("{},",$select_value));
-            selection.push_str(&format!("'{}',",$select_value));
-        )*
-        let select_value = selectvalue.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-            // println!("{}",select_value);
-        let mut idx = 0;
-        $(
-            idx+=1;
-            or_values.push_str(&format!("{} = ${} OR ",$or_values,idx));
-            or_value.push(&$or_value);
-        )*
-        let or_values = or_values.trim_end_matches("OR ");
-            // println!("{}",or_values);
-            // println!("{:?}",or_value);
-        let format = format!("SELECT {} FROM {} WHERE {} LIMIT {} OFFSET {};",select_value,$model,or_values,$limit,$skip);
-        // println!("{}",format);
-        let client = $connection.query(&format,&or_value).unwrap();
-        find_many!(@format $connection,$model,client)
-    }
-    };
-    // * included and or limit //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions:{
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-    limit:$limit:expr
-    ) => {
-            {
-                use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selection = String::new();
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                    and_value.push(&$or_value2);
-                )*
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                    and_value.push(&$and_value);
-                )*
-                let and_values = and_values.trim_end_matches("AND ");
-                // println!("{}",and_values);
-                // println!("{:?}",and_value);
-                let format = format!("SELECT {} FROM {} WHERE {} LIMIT {};",select_value,$model,and_values,$limit);
-                // println!("{}",format);
-                let client = $connection.query(&format,&and_value).unwrap();
-                find_many!(@format $connection,$model,client)
+        )?
+        $(,conditions : {
+            $(and => {
+                $($and_key:expr => $and_value:expr),*
+            })?
+            $(,)?
+            $(
+                or => {
+                $($or_key:expr => $or_value:expr),*
+            })?
         }
-    };
-    // * included and or skip //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions:{
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-    skip:$skip:expr
-    ) => {
-            {
-                use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut selection = String::new();
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                    and_value.push(&$or_value2);
-                )*
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                    and_value.push(&$and_value);
-                )*
-                let and_values = and_values.trim_end_matches("AND ");
-                // println!("{}",and_values);
-                // println!("{:?}",and_value);
-                let format = format!("SELECT {} FROM {} WHERE {} OFFSET {};",select_value,$model,and_values,$skip);
-                // println!("{}",format);
-                let client = $connection.query(&format,&and_value).unwrap();
-                find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or order //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions:{
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-    order : {$($target:expr => $order:expr),*}
-    ) => {
-            {
-                use core::panic;
-                use postgres::types::ToSql;
-
-                let mut selectvalue = String::new();
-                let mut and_values = String::new();
-                let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-                let mut order = String::new();
-                let mut selection = String::new();
-                $(
-                    selectvalue.push_str(&format!("{},",$select_value));
-                    selection.push_str(&format!("'{}',",$select_value));
-                )*
-                let select_value = selectvalue.trim_end_matches(",");
-                let selection = selection.trim_end_matches(",");
-                // println!("{}",select_value);
-                let mut idx = 0;
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                    and_value.push(&$or_value2);
-                )*
-                $(
-                    idx+=1;
-                    and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                    and_value.push(&$and_value);
-                )*
-                $(
-                    if !["asc","desc"].contains(&$order) {
-                        panic!("Provide correct order either \"asc\" nor \"desc\"");
+        )?
+        $(,inside:
+        {
+            // (
+            $include:expr
+                => {
+                    match:$include_match:expr,
+                    $(select:
+                        {
+                            $($select:expr),*
+                        }
+                    ),*
+                        $(,)?
+                        $(
+                            ,conditions: {
+                                $(
+                                    and => {
+                                        $(
+                                            $condition_key:expr => $condition_value:expr
+                                        ),*
+                                    }
+                                )?
+                                $(,)?
+                                $(
+                                    or => {
+                                        $(
+                                            $condition_or_key:expr => $condition_or_value:expr
+                                            ),*
+                                    }
+                                )?
+                            }
+                        )?
+                        $(,)?
+                        $(
+                            ,order:
+                                {
+                                    $(
+                                        $order_key:expr => $order_value:expr
+                                    )*
+                                }
+                        )?
+                        $(,)?
+                        $(
+                            ,limit:$limit:expr
+                        )?
                     }
-                    let order_ = format!("{} {},",$target,$order);
-                    order.push_str(&order_);
-                )*
-                let and_values = and_values.trim_end_matches("AND ");
-                let order = order.trim_end_matches(",");
-                // println!("{}",and_values);
-                // println!("{:?}",and_value);
-                let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {};",select_value,$model,and_values,order);
-                // println!("{}",format);
-                let client = $connection.query(&format,&and_value).unwrap();
-                find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or limit skip //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions:{
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-        limit:$limit:expr,
-        skip:$skip:expr
-    ) =>
-    {
-
-        {
-            use postgres::types::ToSql;
-
-            let mut selectvalue = String::new();
-            let mut and_values = String::new();
-            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut selection = String::new();
+                // ),*
+        })?
+        $(,)?
+        $(,order:{
             $(
-                selectvalue.push_str(&format!("{},",$select_value));
-                selection.push_str(&format!("'{}',",$select_value));
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            // println!("{}",select_value);
-            let selection = selection.trim_end_matches(",");
-            let mut idx = 0;
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                and_value.push(&$or_value2);
-            )*
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
-            let and_values = and_values.trim_end_matches("AND ");
-            // println!("{}",and_values);
-            // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {} LIMIT {} OFFSET {};",select_value,$model,and_values,$limit,$skip);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-        // * included and order //completed
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions : {
-        $($and_values:expr => $and_value:expr),*
-    },
-    order : {$($target:expr => $order:expr),*}
-    ) =>
-    {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut selectvalue = String::new();
-            let mut and_values = String::new();
-            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut order = String::new();
-            let mut selection = String::new();
-            $(
-                selectvalue.push_str(&format!("{},",$select_value));
-                selection.push_str(&format!("'{}',",$select_value));
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            // println!("{}",select_value);
-                            let selection = selection.trim_end_matches(",");
-            let mut idx = 0;
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
-            $(
-                if !["asc","desc"].contains(&$order) {
-                    panic!("Provide correct order either \"asc\" nor \"desc\"");
-                }
-                let order_ = format!("{} {},",$target,$order);
-                order.push_str(&order_);
-            )*
-            let order = order.trim_end_matches(",");
-            let and_values = and_values.trim_end_matches("AND ");
-            // println!("{}",and_values);
-            // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {};",select_value,$model,and_values,order);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or order limit skip
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions => {
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-    order : {$($target:expr => $order:expr),*},
-    limit:$limit:expr,
-    skip:$skip:expr
-    ) =>
-    {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut selectvalue = String::new();
-            let mut and_values = String::new();
-            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut order = String::new();
-            let mut selection = String::new();
-            $(
-                selectvalue.push_str(&format!("{},",$select_value));
-                selection.push_str(&format!("'{}',",$select_value));
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            // println!("{}",select_value);
-                            let selection = selection.trim_end_matches(",");
-            let mut idx = 0;
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                and_value.push(&$or_value2);
-            )*
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
-            $(
-                if !["asc","desc"].contains(&$order) {
-                    panic!("Provide correct order either \"asc\" nor \"desc\"");
-                }
-                let order_ = format!("{} {},",$target,$order);
-                order.push_str(&order_);
-            )*
-            let order = order.trim_end_matches(",");
-            let and_values = and_values.trim_end_matches("AND ");
-            // println!("{}",and_values);
-            // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {};",select_value,$model,and_values,order,$limit,$skip);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or order limit
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions => {
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-    order : {$($target:expr => $order:expr),*},
-    limit:$limit:expr
-    ) =>
-    {
-        {
-            use core::panic;
-            use postgres::types::ToSql;
-
-            let mut selectvalue = String::new();
-            let mut and_values = String::new();
-            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut order = String::new();
-            let mut selection = String::new();
-            $(
-                selectvalue.push_str(&format!("{},",$select_value));
-                selection.push_str(&format!("'{}',",$select_value));
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            let selection = selection.trim_end_matches(",");
-                    // println!("{}",select_value);
-            let mut idx = 0;
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                and_value.push(&$or_value2);
-            )*
-            $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
-            $(
-                if !["asc","desc"].contains(&$order) {
-                    panic!("Provide correct order either \"asc\" nor \"desc\"");
-                }
-                else {
-                    let order_ = format!("{} {},",$target,$order);
-                    order.push_str(&order_);
-                }
-            )*
-            let order = order.trim_end_matches(",");
-            let and_values = and_values.trim_end_matches("AND ");
-                    // println!("{}",and_values);
-                    // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {} LIMIT {};",select_value,$model,and_values,order,$limit);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-    // * included and or order skip
-    (connection => $connection:expr,
-    model:$model:expr,
-    select:{
-        $($select_value:expr),*
-    },
-    conditions => {
-        or =>  {$($or_value1:expr => $or_value2:expr),*},
-        $($and_values:expr => $and_value:expr),*
-    },
-    order : {$($target:expr => $order:expr),*},
-    skip:$skip:expr
+                $order:expr => $orderby:expr
+            ),*
+        })?
+        $(,)?
+        $(,limit:$main_limit:expr)?
+        $(,)?
+        $(,skip:$main_skip:expr)?
     ) => {
         {
-            use core::panic;
             use postgres::types::ToSql;
+            use std::io;
 
-            let mut selectvalue = String::new();
-            let mut and_values = String::new();
-            let mut and_value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut order = String::new();
+            let mut include = String::new();
+            let mut relation = String::new();
             let mut selection = String::new();
+            let mut case = String::new();
+
+            let bb = $model.chars().nth(0).unwrap();
+            let table_name = format!("{} {}",$model,bb);
             $(
-                selectvalue.push_str(&format!("{},",$select_value));
-                selection.push_str(&format!("'{}',",$select_value));
-            )*
-            let select_value = selectvalue.trim_end_matches(",");
-            // println!("{}",select_value);
-                            let selection = selection.trim_end_matches(",");
+                let table_dot = format!("{}.{}",bb,$model_value);
+            )?
+            let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
+
             let mut idx = 0;
             $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} OR ",$or_value1,idx));
-                and_value.push(&$or_value2);
-            )*
+                $(
+                    let selections = format!("{}.{},",bb,$select_value);
+                    selection.push_str(&selections);
+                )*
+            )?
+
             $(
-                idx+=1;
-                and_values.push_str(&format!("{} = ${} AND ",$and_values,idx));
-                and_value.push(&$and_value);
-            )*
+                $(
+                    // $(
+                        let mut cases = String::new();
+                    $(
+                            idx += 1;
+
+                            let values_ = $value.to_string();
+                            let value =  if values_.starts_with(">"){
+                                let value = values_.trim_start_matches(">");
+                                let between_and = format!(" WHEN CAST({} AS text) > ${} THEN '{}'",$key,idx,$ok);
+                                cases.push_str(&between_and);
+                                value
+                                // values.push(&value);
+                            }
+                            else if values_.starts_with("<"){
+                                let value = values_.trim_start_matches("<");
+                                let between_and = format!(" WHEN CAST({} AS text) < ${} THEN '{}'",$key,idx,$ok);
+                                cases.push_str(&between_and);
+                                value
+                                // values.push(&value);
+                            }
+                            else if values_.starts_with("="){
+                                let value = values_.trim_start_matches("=");
+                                let between_and = format!(" WHEN CAST({} AS text) = ${} THEN '{}'",$key,idx,$ok);
+                                cases.push_str(&between_and);
+                                value
+                                // values.push(&value);
+                            }
+                            else {
+                                let between_and = format!(" WHEN CAST({} AS text) = ${} THEN '{}'",$key,idx,$ok);
+                                cases.push_str(&between_and);
+                                // values.push(&$value);
+                                $value
+                            };
+                            values.push(&value);
+
+                        )*
+                        let casey = format!(" CASE {} ELSE '{}' END AS {} ",cases,$else,$case);
+                        case.push_str(&casey);
+                    // )*
+                )*
+            )?
+            // println!("{}",case);
+            //inside
             $(
-                if !["asc","desc"].contains(&$order) {
-                    panic!("Provide correct order either \"asc\" nor \"desc\"");
+                let mut select = String::new();
+                let mut inside_condition = String::new();
+                let mut select = format!("(SELECT * FROM {}",$include);
+
+                $(
+                    $(
+                        $(
+                            idx+=1;
+                            let and = format!("CAST({} AS text) = ${} AND ",$condition_key,idx);
+                            inside_condition.push_str(&and);
+
+                            values.push(&$condition_value);
+                        )*
+                    )*
+                )?
+                // let and = format!("({})",inside_condition);
+                $(
+                    $(
+                        $(
+                            idx+=1;
+                            let or = format!("CAST({} AS text) = ${} OR ",$condition_or_key,idx);
+                            inside_condition.push_str(&or);
+
+                            values.push(&$condition_or_value);
+                        )*
+                    )*
+                )?
+                let inside_condition = inside_condition.trim_end_matches("AND ");
+                let inside_condition = inside_condition.trim_end_matches("OR ");
+
+                if inside_condition.len() != 0 {
+                    let inside_condition = format!(" WHERE {}",inside_condition);
+                    select.push_str(&inside_condition);
+                }
+                let mut order = String::new();
+                $(
+                    $(
+                        if ["asc","desc","ASC","DESC"].contains(&$order_value){
+                            let orders = format!("{} {},",$order_key,$order_value.to_uppercase());
+                            order.push_str(&orders);
+                        }
+                        else {
+                            panic!("Please Provide Corrent order either ASC nor DESC")
+                        }
+                    )*
+                )?
+
+                if order.len() != 0 {
+                    let order = format!(" ORDER BY {}",order.trim_end_matches(","));
+                    select.push_str(&order);
+                }
+
+                let b = $include.chars().nth(0).unwrap();
+
+                $(
+                    $(
+                        let r_select = format!("{}.{},",b,$select);
+                        relation.push_str(&r_select);
+                    )*
+                )*
+
+
+                let mut limit = String::new();
+                $(
+                    let limits = format!("{}",$limit);
+                    limit.push_str(&limits);
+                )?
+
+                if limit.len() != 0 {
+                    let limit = format!(" LIMIT {}",limit);
+                    select.push_str(&limit);
+                }
+
+                select.push_str(")");
+
+                // let or = format!("({})",inside_condition);
+                // println!("{}",select);
+
+                let b = $include.chars().nth(0).unwrap();
+                let r1 = format!("{} {}",$include,b);
+                let r2 = format!("{}.{}",b,$include_match);
+                let inside = format!("LEFT JOIN {} {} ON {} = {}",select,b,table_dot,r2);
+                println!("{}",inside);
+
+                include.push_str(&inside);
+            )?
+
+            // println!("{}",include);
+            let mut conditions = String::new();
+            $(
+                $(
+                    $(
+                        idx += 1;
+                        let and = format!("CAST({}.{} AS text) = ${} AND ",bb,$and_key,idx);
+                        conditions.push_str(&and);
+
+                        values.push(&$and_value);
+                    )*
+                )?
+            )?
+            $(
+                $(
+                    $(
+                        idx += 1;
+                        let or = format!("CAST({}.{} AS text) = ${} OR ",bb,$or_key,idx);
+                        conditions.push_str(&or);
+
+                        values.push(&$or_value);
+                    )*
+                )?
+            )?
+            let conditions = conditions.trim_end_matches("AND ");
+            let conditions = conditions.trim_end_matches("OR ");
+            // $(
+                // let mut limit = String::new();
+                // let mut order = String::new();
+                // // let include_table = format!("{}.{}",b,$model_value);
+                // // let relation_table = format!("{}.{}",b,$include);
+
+                // let r1 = format!("{} {}",$include,b);
+                // let r2 = format!("{}.{}",b,$match);
+
+                // let order = order.trim_end_matches(",");
+                // if !limit.is_empty() && !order.is_empty() {
+                //     let include_format = format!("LEFT JOIN {} {} ON {} = {}\r\n",select,b,table_dot,r2);
+                //     include.push_str(&include_format);
+                // }
+                // else if !limit.is_empty() && order.is_empty() {
+                //     let select = format!("(SELECT * FROM {} LIMIT {})",$include,limit);
+                //     let include_format = format!("LEFT JOIN {} {} ON {} = {}\r\n",select,b,table_dot,r2);
+                //     include.push_str(&include_format);
+                // }
+                // else if limit.is_empty() && !order.is_empty() {
+                //     let select = format!("(SELECT * FROM {} ORDER BY {})",$include,order);
+                //     let include_format = format!("LEFT JOIN {} {} ON {} = {}\r\n",select,b,table_dot,r2);
+                //     include.push_str(&include_format);
+                // }
+                // else  {
+                //     let include_format = format!("LEFT JOIN {} ON {} = {}\r\n",r1,table_dot,r2);
+                //     include.push_str(&include_format);
+                // }
+                // println!("{}",include_format);
+
+            // )*
+
+            let mut relation = relation.trim_end_matches(",").to_string();
+            let selection = selection.trim_end_matches(",");
+
+            let mut query = format!("SELECT ");
+            if selection.len() != 0 {
+                query.push_str(&selection);
+            }
+            if case.len() != 0 {
+                let case = format!("{},",case);
+                query.push_str(&case);
+            }
+            // else {
+            //     query.push_str(&format!("{}.*,",bb));
+            // }
+            if relation.len() != 0 {
+                if selection.len() != 0 {
+                    query.push_str(&format!(",{}",relation));
                 }
                 else {
-                    let order_ = format!("{} {},",$target,$order);
-                    order.push_str(&order_);
+                    query.push_str(&format!("{}",relation));
                 }
-            )*
-            let order = order.trim_end_matches(",");
-            let and_values = and_values.trim_end_matches("AND ");
-            // println!("{}",and_values);
-            // println!("{:?}",and_value);
-            let format = format!("SELECT {} FROM {} WHERE {} ORDER BY {} OFFSET {};",select_value,$model,and_values,order,$skip);
-            // println!("{}",format);
-            let client = $connection.query(&format,&and_value).unwrap();
-            find_many!(@format $connection,$model,client)
-        }
-    };
-    (connection => $connection:expr,
-    model:$model:expr,
-    condition:{$($condition:expr => $value:expr),*},
-    include:{$($include:expr),*},
-    match:{
-        $match:expr => $match_value:expr
-    }) => {
-        {
-            let mut include = String::new();
-            let mut conditions = String::new();
-            let mut includes = String::new();
-            $(
-                include.push_str(&format!("{}.*,",$include));
-                includes.push_str(&format!("{},",$include));
-            )*
-            $(
-                conditions.push_str(&format!("{}.{} = '{}',",$model,$condition,$value));
-            )*
-            let include = include.trim_end_matches(",");
-            let conditions = conditions.trim_end_matches(",");
-            let includes = includes.trim_end_matches(",");
-            let query = format!("SELECT {} , {}.* FROM {} LEFT JOIN {} on {}.{} = {}.{} WHERE {};",include,$model,$model,includes,$model,$match,includes,$match_value,conditions);
-            let client = $connection.query(&query,&[]).unwrap();
-            // println!("{}",query);
-            find_many!(@format $connection,$model,client)
-
-        }
-    };
-    (connection => $connection:expr,
-    model:$model:expr,
-    condition:{$($condition:expr => $value:expr),*},
-    include:{$($include:expr => {$($select:expr),*}),*},
-    match:{
-        $match:expr => $match_value:expr
-    }) => {
-        {
-            let mut include = String::new();
-            let mut conditions = String::new();
-            let mut includes = String::new();
-            let mut select = String::new();
+            }
+            // else {
+            //     $(
+            //         let b = $include.chars().nth(0).unwrap();
+            //         let r_select = format!("{}.*,",b);
+            //         relation.push_str(&r_select);
+            //     )*
+            //     let relation = relation.trim_end_matches(",");
+            //     query.push_str(relation);
+            // }
+            if table_name.len() != 0 {
+                let from = format!(" FROM {} ",table_name);
+                query.push_str(&from);
+            }
+            if include.len() != 0 {
+                query.push_str(&include);
+            }
+            if conditions.len() != 0 {
+                let conditions = format!(" WHERE {}",conditions);
+                query.push_str(&conditions)
+            }
             $(
                 $(
-                    include.push_str(&format!("{}.{},",$include,$select));
+                    if !["asc","desc","ASC","DESC"].contains($orderby){
+                        panic!("Please Provide Correct Order ASC DESC")
+                    }
+                    else {
+                        let order = format!("{} {}",$order,$orderby)
+                        query.push_str(&format!(" ORDER BY {} {}",$order,$orderby))
+                    }
                 )*
-                includes.push_str(&format!("{},",$include));
-            )*
+            )?
             $(
-                conditions.push_str(&format!("{}.{} = '{}',",$model,$condition,$value));
-            )*
-            let include = include.trim_end_matches(",");
-            let conditions = conditions.trim_end_matches(",");
-            let includes = includes.trim_end_matches(",");
-            let query = format!("SELECT {} , {}.* FROM {} LEFT JOIN {} on {}.{} = {}.{} WHERE {};",include,$model,$model,includes,$model,$match,includes,$match_value,conditions);
-            let client = $connection.query(&query,&[]).unwrap();
+                query.push_str(&format!(" LIMIT {}",$main_limit));
+            )?
+            $(
+                query.push_str(&format!(" OFFSET {}",$main_skip));
+            )?
+            // println!("{}",conditions);
+            // println!("{}",relation);
             // println!("{}",query);
-            find_many!(@format $connection,$model,client)
-
-        }
-    };
-    (connection => $connection:expr,
-        model:$model:expr,
-        select:{$($select_value:expr),*},
-        condition:{$($condition:expr => $value:expr),*},
-        include:{$($include:expr => {$($select:expr),*}),*},
-        match:{
-        $match:expr => $match_value:expr
-    }) => {
-        {
-            let mut include = String::new();
-            let mut conditions = String::new();
-            let mut includes = String::new();
-            let mut select = String::new();
-            $(
-                $(
-                    include.push_str(&format!("{}.{},",$include,$select));
-                )*
-                includes.push_str(&format!("{},",$include));
-            )*
-            $(
-                    include.push_str(&format!("{}.{},",$model,$select_value));
-            )*
-            $(
-                conditions.push_str(&format!("{}.{} = '{}',",$model,$condition,$value));
-            )*
-            let include = include.trim_end_matches(",");
-            let conditions = conditions.trim_end_matches(",");
-            let includes = includes.trim_end_matches(",");
-            let query = format!("SELECT {}  FROM {} LEFT JOIN {} on {}.{} = {}.{} WHERE {};",include,$model,includes,$model,$match,includes,$match_value,conditions);
-            // println!("{}",query);
-            let client = $connection.query(&query,&[]).unwrap();
-            find_many!(@format $connection,$model,client)
-
-        }
-    };
-    (connection => $connection:expr,model:$model:expr,select:{$($select_value:expr),*},
-    condition:{$($condition:expr => $value:expr),*},
-    within:{
-        lattitude:$lattitude:expr,
-        longitude:$longitude:expr,
-        within:$within:expr
-    },
-    also_include:{
-         $location:expr
-    }) => {
-        {
-            use postgres::types::ToSql;
-
-            let mut conditions = String::new();
-            let mut select = String::new();
-            let mut location_value = String::new();
-            let mut condition:Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-
-            $(
-                let select_value = format!("{},",$select_value);
-                select.push_str(&select_value);
-            )*
-
-            let mut idx = 0;
-            idx+=1;
-            let condition_longitude = format!("${}",idx);
-            idx+=1;
-            let condition_lattitude = format!("${}",idx);
-            // location_value.push_str(&format!("{} {}",condition_lattitude,condition_longitude));
-
-            condition.push(&$longitude);
-            condition.push(&$lattitude);
-            $(
-                idx+=1;
-                let condition_value = format!("{} = ${} AND ",$condition,idx);
-                conditions.push_str(&condition_value);
-
-                condition.push(&$value);
-            )*
-
-
-            let select = select.trim_end_matches(",");
-            let conditions = conditions.trim_end_matches("AND ");
-            let query = format!("SELECT {},ST_AsGeoJson({}) FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),{}) AND {};",select,$location,$model,$location,condition_longitude,condition_lattitude,$within,conditions);
-            // println!("{}",query);
-            // println!("{:?}",condition);
-            let client = $connection.query(&query,&condition).unwrap();
-            find_many!(@format $connection,$model,client)
-
+            // println!("{:?}",values);
+            let client = $connection.query(&query,&values);
+            match client {
+                Err(error) => {
+                    Err(io::Error::new(io::ErrorKind::NotFound, error))
+                },
+                Ok(client) => {
+                    let client = formats!{
+                             client
+                    };
+                    Ok(client)
+                }
+            }
         }
     };
     (connection => $connection:expr,model:$model:expr,select:{$($select_value:expr),*},
     within:{
         lattitude:$lattitude:expr,
-        longitude:$longitude:expr,
-        within:$within:expr
+        longitude:$longitude:expr
+        $(,within:$within:expr)?
     },
-    also_include:{
+    based_on:{
          $location:expr
-    }) => {
-        {
-            use postgres::types::ToSql;
-
-            let mut select = String::new();
-            let mut location_value = String::new();
-            let mut condition:Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-
-            $(
-                let select_value = format!("{},",$select_value);
-                select.push_str(&select_value);
-            )*
-
-            let mut idx = 0;
-            idx+=1;
-            let condition_longitude = format!("${}",idx);
-            idx+=1;
-            let condition_lattitude = format!("${}",idx);
-            // location_value.push_str(&format!("{} {}",condition_lattitude,condition_longitude));
-
-            condition.push(&$longitude);
-            condition.push(&$lattitude);
-
-
-            let select = select.trim_end_matches(",");
-            let query = format!("SELECT {},ST_AsGeoJson({}) FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),{});",select,$location,$model,$location,condition_longitude,condition_lattitude,$within);
-            // println!("{}",query);
-            // println!("{:?}",condition);
-            let client = $connection.query(&query,&condition).unwrap();
-            find_many!(@format $connection,$model,client)
-
-        }
-    };
-    (connection => $connection:expr,model:$model:expr,select:{$($select_value:expr),*},
-    within:{
-        lattitude:$lattitude:expr,
-        longitude:$longitude:expr,
-        within:$within:expr
-    },
-    also_include:{
-         $location:expr
-    },limit:$limit:expr) => {
+    }$(,limit:$limit:expr)?) => {
         {
             use postgres::types::ToSql;
 
@@ -3265,6 +1414,8 @@ macro_rules! find_many {
             let mut location_value = String::new();
             let mut condition:Vec<&(dyn ToSql + Sync)> = Vec::new();
             let mut select = String::new();
+            let mut within = String::new();
+            let mut limit = String::new();
 
 
             $(
@@ -3274,6 +1425,13 @@ macro_rules! find_many {
                 let selects = select_value.trim_end_matches(",");
                 select.push_str(&format!("'{}',",selects));
             )*
+
+            $(
+                within.push_str(&$within.to_string());
+            )?
+            $(
+                limit.push_str(&$limit.to_string());
+            )?
 
             let select_value = format!("ST_AsGeoJson({}),",$location);
             selection.push_str(&select_value);
@@ -3294,50 +1452,51 @@ macro_rules! find_many {
 
             let selection = selection.trim_end_matches(",");
             let select = select.trim_end_matches(",");
-            let query = format!("SELECT {} FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),{}) LIMIT {};",selection,$model,$location,condition_longitude,condition_lattitude,$within,$limit);
-            // println!("{}",query);
-            // println!("{:?}",condition);
-            let client = $connection.query(&query,&condition).unwrap();
-            // client
-            find_many!(@format $connection,$model,client)
+
+            if !within.is_empty() && !limit.is_empty() {
+                let query = format!("SELECT {} FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),{}) LIMIT {};",selection,$model,$location,condition_longitude,condition_lattitude,within,limit);
+                // println!("{}",query);
+                // println!("{:?}",condition);
+                let client = $connection.query(&query,&condition).unwrap();
+                // client
+                find_many!(@format client)
+            }
+            else if within.is_empty() && !limit.is_empty() {
+                let query = format!("SELECT {} FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),0) LIMIT {};",selection,$model,$location,condition_longitude,condition_lattitude,limit);
+                // println!("{}",query);
+                // println!("{:?}",condition);
+                let client = $connection.query(&query,&condition).unwrap();
+                // client
+                find_many!(@format client)
+            }
+            else if !within.is_empty() && limit.is_empty() {
+                let query = format!("SELECT {} FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),{});",selection,$model,$location,condition_longitude,condition_lattitude,within);
+                // println!("{}",query);
+                // println!("{:?}",condition);
+                let client = $connection.query(&query,&condition).unwrap();
+                // client
+                find_many!(@format client)
+            }
+            else  {
+                let query = format!("SELECT {} FROM {} WHERE ST_DWIthin({},ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')'),0);",selection,$model,$location,condition_longitude,condition_lattitude);
+                // println!("{}",query);
+                // println!("{:?}",condition);
+                let client = $connection.query(&query,&condition);
+                // client
+                match client {
+                    Err(error) => {
+                        Err(io::Error::new(io::ErrorKind::NotFound, error))
+                    },
+                    Ok(client) => {
+                        let client = formats!{
+                                 client
+                        };
+                        Ok(client)
+                    }
+                }
+            }
         }
     };
-    (connection => $connection:expr,model:$model:expr,select:{$($select_value:expr),*},
-    also_include:{
-         $location:expr
-    }) => {
-        {
-            use postgres::types::ToSql;
-
-            let mut selection = String::new();
-            let mut select = String::new();
-
-
-            $(
-                let select_value = format!("{},",$select_value);
-                selection.push_str(&select_value);
-
-                let selects = select_value.trim_end_matches(",");
-                select.push_str(&format!("'{}',",selects));
-            )*
-
-            let select_value = format!("ST_AsGeoJson({}),",$location);
-            selection.push_str(&select_value);
-            select.push_str(&format!("'{}'",$location));
-
-            // select.push_str(&format!("'ST_AsText({})'",$location));
-
-
-            let selection = selection.trim_end_matches(",");
-            let select = select.trim_end_matches(",");
-            let query = format!("SELECT {} FROM {};",selection,$model);
-            // println!("{}",query);
-            // println!("{:?}",condition);
-            let client = $connection.query(&query,&[]).unwrap();
-            // client
-            find_many!(@format $connection,$model,client)
-        }
-    }
 }
 
 #[macro_export]
@@ -3352,559 +1511,438 @@ macro_rules! delete_many {
 
 /// # Example
 /// ```
-/// delete!{
-/// connection => conn,
-/// model: "users",
-/// conditions: { "id" => 123, "status" => "inactive" }
-/// };
-/// ```
-/// ```
-/// delete!{
-/// connection => conn,
-/// model: "users",
-///  conditions: { "id" => 123 },
-/// select: { "email" "username" }
-/// };
-/// ```
-/// ```
-/// delete!{
-/// connection => conn,
-///  model: "orders",
-/// conditions: { "user_id" => 123 },
-/// cascade: true
-/// };
-/// ```
-/// ```
-/// delete!{connection => conn,
-///  model: "products",
-/// conditions => { or => { "category" => "electronics", "price" => 500 } }
-/// };
-/// ```
-/// ```
-/// delete!{
-/// connection => conn,
-///  model: "products",
-///  conditions => { or => { "id" => 123, "category" => "clothing" } }, select: { "name","price" }
-/// };
-/// ```
-/// ```
-/// delete!{connection => conn,
-///  model: "logs",
-/// conditions: { "event_type" => "error", "timestamp" => "2025-01-01" },
-/// cascade: "true"
+/// let delete = delete! {
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{                // Optional
+///         "place"
+///     },
+///     conditions:{            // Optional
+///         and => {            // Optional
+///             "place" => 24 as i32
+///         },
+///         or => {             // Optional
+///             "place" => 24 as i32
+///         }
+///     },
+///     cascade:true            // Optional
 /// };
 /// ```
 #[macro_export]
 macro_rules! delete {
-    (@format $connection:expr,$model:expr,$client:expr) => {
-    {
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-            let mut billionaires = Vec::new();
-            for billionaire in $client.iter() {
-                let mut collection = Vec::new();
-                let billionaire_column = billionaire.columns();
-                for billionaires in billionaire_column.iter() {
-                    let mut map = BTreeMap::new();
-
-                    let name = billionaires.name();
-                    let billion = billionaires.type_().name();
-
-                    // println!("{:?}", billion);
-
-                    let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-    }
-      };
-    // * and
-    (connection => $connection:expr,model:$model:expr,conditions:{
-        $($condition:expr => $like:expr),*
-    }) => {{
-        use postgres::types::ToSql;
-
-        let mut delete = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx+=1;
-            let query = format!("{} = ${} AND ",$condition,idx);
-            delete.push_str(&query);
-
-            values.push(&$like);
-        )*
-        let delete  = delete.trim_end_matches("AND ");
-        let delete = format!("DELETE FROM {} WHERE {};",$model,delete);
-        // println!("{}",delete);
-        $connection.execute(&delete,&values)
-    }};
     // * and select
     (connection => $connection:expr,
-        model:$model:expr,
-        conditions:{
-        $($condition:expr => $like:expr),*
-    },select:{
-        $($value:expr)*
-    }) => {{
+        model:$model:expr
+    $(,
+        select:{
+            $($value:expr),*
+        }
+    )?
+    $(
+        ,conditions:{
+            $(and => {
+                $($cak:expr => $cav:expr),*
+            })?
+            $(,)?
+            $(or => {
+                $($cok:expr => $cov:expr),*
+            })?
+        }
+    )?
+    $(
+        ,cascade:$cascade:expr
+    )?
+        ) => {{
         use postgres::types::ToSql;
 
-        let mut delete = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        let mut value = String::new();
+        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut selection = String::new();
-        $(
-            idx+=1;
-            let query = format!("{} = ${} AND ",$condition,idx);
-            delete.push_str(&query);
+        let mut condition = String::new();
 
-            values.push(&$like);
-        )*
-        $(
-            value.push_str(&format!("{},",$value));
-            selection.push_str(&format!("'{}',",$value));
-        )*
-        let value = value.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-        let delete  = delete.trim_end_matches("AND ");
-        let delete = format!("DELETE FROM {} WHERE {} RETURNING {};",$model,delete,value);
-        // println!("{}",delete);
-        let client = $connection.query(&delete,&values).unwrap();
-        // println!("{:?}",client);
-        delete!(@format $connection,$model,client)
-
-    }};
-    // * and cascade
-    (connection => $connection:expr,model:$model:expr,conditions:{
-            $($condition:expr => $like:expr),*
-    },cascade:$casecade:expr) => {{
-      use postgres::types::ToSql;
-
-            let mut delete = String::new();
-            let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut idx = 0;
-            $(
-                idx+=1;
-                let query = format!("{} = ${} AND ",$condition,idx);
-                delete.push_str(&query);
-
-                values.push(&$like);
-            )*
-            let delete  = delete.trim_end_matches("AND ");
-            if $casecade != "true" {
-                panic!("{}","Provide boolean value for the casecade")
-            }
-            let delete = format!("DELETE FROM {} WHERE {} CASCADE;",$model,delete);
-            // println!("{}",delete);
-            $connection.execute(&delete,&values)
-    }};
-    // * or
-    (connection => $connection:expr,
-        model:$model:expr,
-        conditions => {
-            or => {
-                $($condition:expr => $like:expr),*
-            }
-    }) => {{
-      use postgres::types::ToSql;
-
-            let mut delete = String::new();
-            let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut idx = 0;
-            $(
-                idx+=1;
-                let query = format!("{} = ${} OR ",$condition,idx);
-                delete.push_str(&query);
-
-                values.push(&$like);
-            )*
-            let delete  = delete.trim_end_matches("OR ");
-            let delete = format!("DELETE FROM {} WHERE {};",$model,delete);
-            // println!("{}",delete);
-            $connection.execute(&delete,&values)
-    }};
-    // * or select
-    (connection => $connection:expr,
-            model:$model:expr,
-            conditions => {
-            or => {$($condition:expr => $like:expr),*}
-        },select:{
-            $($value:expr)*
-    }) => {{
-      use postgres::types::ToSql;
-
-            let mut delete = String::new();
-            let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut idx = 0;
-            let mut value = String::new();
-            let mut selection = String::new();
-            $(
-                idx+=1;
-                let query = format!("{} = ${} OR ",$condition,idx);
-                delete.push_str(&query);
-
-                values.push(&$like);
-            )*
-            $(
-                value.push_str(&format!("{},",$value));
-                selection.push_str(&format!("'{}',",$value));
-            )*
-            let value = value.trim_end_matches(",");
-            let selection = selection.trim_end_matches(",");
-            let delete  = delete.trim_end_matches("OR ");
-            let delete = format!("DELETE FROM {} WHERE {} RETURNING {};",$model,delete,value);
-            // println!("{}",delete);
-            let client = $connection.query(&delete,&values).unwrap();
-            delete!(@format $connection,$model,client)
-
-    }};
-    // * or cascase
-    (connection => $connection:expr,model:$model:expr,conditions:{
-        $($condition:expr => $like:expr),*
-    },cascade:$casecade:expr) => {{
-
-      use postgres::types::ToSql;
-
-        let mut delete = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx+=1;
-            let query = format!("{} = ${} OR ",$condition,idx);
-            delete.push_str(&query);
-
-            values.push(&$like);
-        )*
-        let delete  = delete.trim_end_matches("OR ");
-        if $casecade != "true" {
-            panic!("{}","Provide boolean value for the casecade")
+        if $model.is_empty() {
+            panic!("{}","Please Provide Table Name")
         }
-        let delete = format!("DELETE FROM {} WHERE {}CASCADE;",$model,delete);
-        // println!("{}",delete);
-        $connection.execute(&delete,&values)
+
+        let mut idx = 0;
+
+        // conditions
+
+        $(
+            $(
+                $(
+                    if $cak.is_empty(){
+                        panic!("{}","Please Provide Condition for AND Values")
+                    }
+                    idx += 1;
+                    let and=  format!("{} = ${} AND ",$cak,idx);
+                    condition.push_str(&and);
+                    value.push(&$cav);
+                )*
+            )?
+            $(
+                $(
+                    if $cok.is_empty(){
+                        panic!("{}","Please Provide Condition for OR Values")
+                    }
+                    idx += 1;
+                    let and=  format!("{} = ${} OR ",$cok,idx);
+                    condition.push_str(&and);
+                    value.push(&$cov);
+                )*
+            )?
+        )?
+        let condition = condition.trim_end_matches("OR ");
+
+        $(
+            $(
+                if $value.is_empty(){
+                    panic!("{}","Please Provide Select Values")
+                }
+                selection.push_str(&format!("{},",$value));
+            )*
+        )?
+        let selection = selection.trim_end_matches(",");
+
+        let mut delete = format!("DELETE FROM {}",$model);
+        if condition.len() != 0 {
+            let condition = format!(" WHERE {}",condition);
+            delete.push_str(&condition);
+        }
+        if selection.len() != 0 {
+            let selection = format!(" RETURNING {}",selection);
+            delete.push_str(&selection);
+        }
+        $(
+            if $cascade {
+                delete.push_str(" CASECADE");
+            }
+        )?
+        delete.push_str(";");
+        println!("{}",delete);
+        // println!("{:?}",value);
+        let client = $connection.query(&delete,&value);
+        // println!("{:?}",client);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = formats!{
+                         client
+                };
+                Ok(client)
+            }
+        }
+
     }};
 }
 
+///
+/// # Example
+///
+/// ```
+/// let update = update! {
+///     connection => postgres,
+///     model:"place",
+///     select:{
+///         "id"
+///     },
+///     data:{
+///         "name" => "billionairehari"
+///     },
+///     conditions:{
+///         and => {
+///             "name" => "billionairehari"
+///         },
+///         or => {
+///             "" => ""
+///         }
+///     }
+/// };
+/// ```
+///
+/// ## Usage
+/// ```
+/// let update = update! {
+///        connection => postgres,
+///        model:"billionaires",
+///        match:"id",
+///        inside:{
+///            "place"  => {
+///                match:"user_id",
+///                conditions:{
+///                    and => {
+///                        "name" => "billionaires",
+///                        "user_id" => "c4a97a50-8679-4f85-a1d8-5bba0113b596"
+///                    }
+///                },
+///                data:{
+///                    "name" => "billionairehari"
+///                },
+///                select:{
+///                    "name"
+///                }
+///            }
+///        }
+///    };
+/// ```
+///
 #[macro_export]
 // * data conditions
 macro_rules! update {
-    (@format $connection:expr,$model:expr,$client:expr) => {
-    {
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-            let mut billionaires = Vec::new();
-            for billionaire in $client.iter() {
-                let mut collection = Vec::new();
-                let billionaire_column = billionaire.columns();
-                for billionaires in billionaire_column.iter() {
-                    let mut map = BTreeMap::new();
-
-                    let name = billionaires.name();
-                    let billion = billionaires.type_().name();
-
-                    // println!("{:?}", billion);
-
-                    let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-    }
-      };
-    // * data
-    (connection => $connection:expr,model : $model:expr,data:{
+    // * data select conditions
+    (connection => $connection:expr,model : $model:expr
+    $(,select:{
+        $($select:expr),*
+    })?
+      ,data:{
         $($from:expr => $data:expr),*
-    }) => {{
-      use postgres::types::ToSql;
+    }
+    $(,conditions:{
+        $(and => {$($conditions:expr => $value:expr),*})?
+        $(,)?
+        $(or => {$($conditions_or:expr => $value_or:expr),*})?
+    })?
+    ) => {{
+        use postgres::types::ToSql;
 
-        let mut data = String::new();
-        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
+        let mut condition = String::new();
+        let mut set = String::new();
+        let mut select = String::new();
         let mut idx = 0;
+        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
+
         $(
-            idx += 1;
-            let set = format!("{} = ${},",$from,idx);
-            data.push_str(&set);
+            idx+=1;
+            let update = format!("{} = ${},",$from,idx);
+            set.push_str(&update);
 
             value.push(&$data);
         )*
-        let data = data.trim_end_matches(",");
-        let update = format!("UPDATE {} SET {};",$model,data);
-        // println!("{}",update);
-        // println!("{:?}",value);
-        $connection.execute(&update,&value)
-    }};
-    // * data select conditions
-    (connection => $connection:expr,model : $model:expr,
-      select:{
-        $($select:expr),*
-    },
-      data:{
-        $($from:expr => $data:expr),*
-    },conditions:{
-        $($conditions:expr => $value:expr),*
-    }) => {{
-      use postgres::types::ToSql;
-
-        let mut data = String::new();
-        let mut conditions = String::new();
-        let mut values: Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut select = String::new();
-        let mut selection = String::new();
-        let mut idx = 0;
         $(
-            idx += 1;
-            let set = format!("{} = ${},",$from,idx);
-            data.push_str(&set);
+            $(
+                $(
+                    idx+=1;
+                    let and = format!("CAST({} AS TEXT) = ${} AND ",$conditions,idx);
+                    condition.push_str(&and);
 
-            values.push(&$data);
-        )*
+                    value.push(&$value);
+                )*
+            )?
+        )?
         $(
-            idx += 1;
-            let condition = format!("{} = ${} AND ",$conditions,idx);
-            conditions.push_str(&condition);
+            $(
+                $(
+                    idx+=1;
+                    let or = format!("CAST({} AS TEXT) = ${} OR ",$conditions_or,idx);
+                    condition.push_str(&or);
 
-            values.push(&$value);
-        )*
+                    value.push(&$value_or);
+                )*
+            )?
+        )?
         $(
-            let value = format!("{},",$select);
-            select.push_str(&value);
-
-            let value = format!("'{}',",$select);
-            selection.push_str(&value);
-        )*
-        let conditions = conditions.trim_end_matches("AND ");
-        let data = data.trim_end_matches(",");
+            $(
+                let selection = format!("{},",$select);
+                select.push_str(&selection);
+            )*
+        )?
+        let set = set.trim_end_matches(",");
         let select = select.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-        let update = format!("UPDATE {} SET {} WHERE {} RETURNING {};",$model,data,conditions,select);
-        // println!("{}",update);
-        // println!("{:?}",values);
-        let client = $connection.query(&update,&values).unwrap();
-        update!(@format $connection,$model,client)
+        let condition = condition.trim_end_matches("OR ");
+        let condition = condition.trim_end_matches("AND ");
+        // println!("{}",set);
+        // println!("{}",select);
+        // println!("{}",condition);
+        // println!("{:?}",value);
+        let mut query = format!("UPDATE {} SET {}",$model,set);
+        if condition.len() != 0 {
+            let condition = format!(" WHERE {}",condition);
+            query.push_str(&condition);
+        }
+        if select.len() != 0 {
+            let select = format!(" RETURNING {}",select);
+            query.push_str(&select);
+        }
+        query.push_str(";");
+        // println!("{}",query);
+        let client = $connection.query(&query,&value);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = format!{
+                        @format client
+                };
+                Ok(client)
+            }
+        }
     }};
+    (connection => $connection:expr,
+        model:$model:expr,
+        match:$model_value:expr
+        $(,select:{
+            $($select:expr),*
+        })?
+        ,inside:
+        {
+            $from:expr => {
+                match:$match:expr,
+                $(conditions : {
+                    $(and => {$($and_from_key:expr => $and_from_value:expr),*})?
+                    $(,)?
+                    $(or => {$($or_from_key:expr => $or_from_value:expr),*})?
+                })?
+                $(,)?
+                data:{
+                    $($data_from:expr => $data_value:expr),*
+                }
+                $(,)?
+                $(
+                    select:{
+                    $(
+                        $select_from:expr
+                    ),*
+                    }
+                )?
+            }
+        }
+        $(,conditions:{
+            $(and => {$($conditions:expr => $value:expr),*})?
+            $(or => {$($conditions_or:expr => $value_or:expr),*})?
+        })?
+        // $(
+
+        // )?
+        ) => {{
+            use postgres::types::ToSql;
+
+
+            let mut relation = String::new();
+            let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
+            let mut updates = String::new();
+
+            // $(
+                // $(
+                let mut idx = 0;
+            $(
+                let from = $from;
+                let mut selection = String::new();
+                let mut set = String::new();
+                let mut conditions = String::new();
+
+                idx +=1;
+                let update = format!("{} = ${},",$data_from,idx);
+                    // println!("{}",update);
+                set.push_str(&update);
+                value.push(&$data_value);
+
+                $(
+                    $(
+                        idx+=1;
+                        let condition = format!("CAST({} AS text) = ${} AND ",$and_from_key,idx);
+                        conditions.push_str(&condition);
+
+                        value.push(&$and_from_value);
+                    )*
+                )?
+                $(
+                    $(
+                        idx+=1;
+                        let condition = format!("CAST({} AS text) = ${} OR ",$or_from_key,idx);
+                        conditions.push_str(&condition);
+
+                        value.push(&$or_from_value);
+                    )*
+                )?
+                $(
+                    let select = format!("{},",$select_from);
+                    selection.push_str(&select);
+                )*
+                let conditions = conditions.trim_end_matches("AND ");
+                let conditions = conditions.trim_end_matches("OR ");
+                let conditions = format!("{}.{} = {}.{} AND ({})",$model,$model_value,$from,$match,conditions);
+                let selection = selection.trim_end_matches(",");
+                let set = set.trim_end_matches(",");
+                // println!("{}",set);
+                let mut update = format!("UPDATE {}",$from);
+                if set.len() != 0 {
+                    let set = format!(" SET {}",set);
+                    update.push_str(&set);
+                }
+                update.push_str(&format!(" FROM {}",$model));
+                if conditions.len() != 0 {
+                    let conditions = format!(" WHERE {}",conditions);
+                    update.push_str(&conditions);
+                }
+                if selection.len() != 0 {
+                    let selection = format!(" RETURNING {}",selection);
+                    update.push_str(&selection);
+                }
+                update.push_str(";");
+                // println!("{}",update);
+                updates.push_str(&update);
+            )*
+            let transactions = format!("{}",updates);
+            // println!("{}",transactions);
+                // )*
+            // )?
+            // println!("{}",update);
+            // println!("{:?}",value);
+            let client = $connection.query(&transactions,&value);
+            // println!("{:?}",client);
+            match client {
+                Err(error) => {
+                    Err(io::Error::new(io::ErrorKind::NotFound, error))
+                },
+                Ok(client) => {
+                    let client = formats!{
+                             client
+                    };
+                    Ok(client)
+                }
+            }
+        }};
 }
 
 /// # Example
 ///
 /// ```
 /// let create = create! {
-/// connection => postgres,
-/// model:"shop",
-/// data:{
-///     "place" => "san",
-///     "age" => 24 as i32,
-///     "bool" => true
-/// }
+///     connection => postgres,
+///     model:"shop",
+///     data:{
+///         "place" => "san",
+///         "age" => 24 as i32,
+///         "bool" => true
+///     }
 /// };
 /// ```
 ///
 ///```
 /// let create = create! {
-/// connection => postgres,
-/// model:"user_",
-/// data:{
-///     "story" => "billionairehari",
-///     "age" => 24 as i32
-/// },
-/// select:{
-///     "id"
-/// }
+///     connection => postgres,
+///     model:"user_",
+///     data:{
+///         "story" => "billionairehari",
+///         "age" => 24 as i32
+///     },
+///     select:{
+///         "id"
+///     }
 /// };
 /// ```
 #[macro_export]
 macro_rules! create {
-    (@format $connection:expr,$model:expr,$client:expr) => {
-    {
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-            let mut billionaires = Vec::new();
-            for billionaire in $client.iter() {
-                let mut collection = Vec::new();
-                let billionaire_column = billionaire.columns();
-                for billionaires in billionaire_column.iter() {
-                    let mut map = BTreeMap::new();
-
-                    let name = billionaires.name();
-                    let billion = billionaires.type_().name();
-
-                    // println!("{:?}", billion);
-
-                    let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-    }
-      };
     (connection => $connection:expr,model:$model:expr,data:{
         $($from:expr => $data:expr),*
-    }) => {
-        {
-
-          use postgres::types::ToSql;
-
-        let mut data = String::new();
-        let mut data_value = String::new();
-        let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx += 1;
-            let create = format!("{},",$from);
-            data.push_str(&create);
-
-            if $data.to_string().starts_with("SRID") {
-                let datavalue = format!("ST_GeogFromText(${}),",idx);
-                data_value.push_str(&datavalue);
-            }
-            else {
-                let datavalue = format!("${},",idx);
-                data_value.push_str(&datavalue);
-            }
-
-            value.push(&$data);
-        )*
-        let data = data.trim_end_matches(",");
-        let data_value = data_value.trim_end_matches(",");
-        let create = format!("INSERT INTO {} ({}) VALUES ({});",$model,data,data_value);
-        // println!("{}",create);
-        // println!("{:?}",value);
-        $connection.execute(&create,&value)
     }
-    };
-    (connection => $connection:expr,model:$model:expr,data:{
-        $($from:expr => $data:expr),*
-    },
-    select:{
-        $($select_value:expr),*
-    }) => {
+    $(
+        ,select:{
+            $($select_value:expr),*
+        }
+    )?) => {
         {
           use postgres::types::ToSql;
 
@@ -3912,7 +1950,6 @@ macro_rules! create {
         let mut data_value = String::new();
         let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut select_value = String::new();
-        let mut selection = String::new();
         let mut idx = 0;
         $(
             idx += 1;
@@ -3931,19 +1968,32 @@ macro_rules! create {
                 value.push(&$data);
         )*
         $(
-            select_value.push_str(&format!("{},",$select_value));
-            selection.push_str(&format!("'{}',",$select_value));
-        )*
+            $(
+                select_value.push_str(&format!("{},",$select_value));
+            )*
+        )?
         let data = data.trim_end_matches(",");
         let data_value = data_value.trim_end_matches(",");
         let select = select_value.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-        let create = format!("INSERT INTO {} ({}) VALUES ({}) RETURNING {}",$model,data,data_value,select);
+        let mut create = format!("INSERT INTO {} ({}) VALUES ({})",$model,data,data_value);
         // println!("{}",create);
-        // println!("{:?}",value);
+        if select_value.len() != 0 {
+            create.push_str(&format!(" RETURNING {};",select))
+        }
+        // println!("{:?}",create);
 
-    let client = $connection.query(&create,&value).unwrap();
-    create!(@format $connection,$model,client)
+        let client = $connection.query(&create,&value);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = formats!{
+                         client
+                };
+                Ok(client)
+            }
+        }
     }
     }
 }
@@ -4058,6 +2108,25 @@ macro_rules! create_gin_index {
 }
 
 /// search
+///
+/// # Example
+///
+/// ```
+/// let search = similar_search {
+///     connection => postgres,
+///     model:"place",
+///     similarity:{
+///         score:"0.6", //similarity score
+///         believe:"name" //based_on
+///         text:"san" //text
+///     },
+///     order_by:{              //optional
+///         order:"asc",
+///         believe:"name" //based
+///     }
+/// }
+/// ```
+///
 #[cfg(feature = "similar_search")]
 #[macro_export]
 macro_rules! similar_search {
@@ -4067,80 +2136,40 @@ macro_rules! similar_search {
         score:$score:expr,
         believe:$believe:expr,
         text:$text:expr
-    },
-    order_by:{
+    }
+    $(,order_by:{
         order:$order:expr,
         believe:$o_believe:expr,
         text:$o_text:expr
-    }
+    })?
 ) => {{
         use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
         use core::panic;
         use std::collections::{BTreeMap, HashMap};
         use uuid::Uuid;
+        use rusty_postgres::formats;
 
-        let search = format!(
-            "SELECT * FROM {} WHERE similarity({},'{}') > {} ORDER BY similarity({},'{}') {} ",
-            $model, $believe, $text, $score, $o_believe, $o_text, $order
+        let mut search = format!(
+            "SELECT * FROM {} WHERE similarity({},'{}') > {} ",
+            $model, $believe, $text, $score
         );
+        $(
+            let order = format!("ORDER BY similarity({},'{}') {}", $o_believe, $o_text, $order);
+            search.push_str(&order);
+        )?
         // println!("{}", search);
-        let create = $connection.query(&search, &[]).unwrap();
-        let mut billionaires = Vec::new();
-        for billionaire in create.iter() {
-            let mut collection = Vec::new();
-            let billionaire_column = billionaire.columns();
-            for billionaires in billionaire_column.iter() {
-                let mut map = BTreeMap::new();
-
-                let name = billionaires.name();
-                let billion = billionaires.type_().name();
-
-                // println!("{:?}", billion);
-
-                let value = match billion.clone() {
-                    "text" => {
-                        let value: String = billionaire.get(name);
-                        value
-                    }
-                    "date" => {
-                        let value: NaiveDate = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "timestamp" => {
-                        let value: NaiveDateTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int4" => {
-                        let value: i32 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "time" => {
-                        let value: NaiveTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "uuid" => {
-                        let value: Uuid = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "bool" => {
-                        let value: bool = billionaire.get(name);
-                        value.to_string()
-                    }
-                    _ => {
-                        panic!("")
-                    }
+        let client = $connection.query(&search, &[]);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = formats!{
+                         client
                 };
-                map.insert(name.to_string(), value);
-                collection.push(map)
+                Ok(client)
             }
-            // println!("{:?}",collection);
-            billionaires.push(collection);
         }
-        billionaires
     }};
 }
 
@@ -4171,92 +2200,97 @@ macro_rules! table_structure {
     }};
 }
 
+///
+/// # Usage
+///
+/// ```
+/// let count = count! {
+///     connection => postgres,
+///     model:"place",
+///     count:{
+///         "name"
+///     },
+///     conditions:{
+///         and => {
+///             "name" => "billionaires"
+///         }
+///     },
+///     group_by:{
+///         "name"
+///     }
+/// };
+/// ```
+///
+///
 #[cfg(feature = "count")]
 #[macro_export]
 macro_rules! count {
-    (connection => $connection:expr,model:$model:expr) => {{
-      use std::collections::HashMap;
-
-        let count = format!("SELECT COUNT(*) FROM {};", $model);
-        let result = $connection.query(&count, &[]).unwrap();
-        let mut z = HashMap::new();
-        for count in result.iter() {
-            let count: i64 = count.get(0);
-            z.insert("count", count);
-        }
-        z
-    }};
-    (connection => $connection:expr,model:$model:expr,conditions:{
-        $($conditions:expr => $value:expr)*
-    }) => {{
-      use std::collections::HashMap;
-      use postgres::types::ToSql;
-
-        let mut condition = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx += 1;
-            condition.push_str(&format!("{} = ${}",$conditions,idx));
-            values.push(&$value);
-        )*
-        let count = format!("SELECT COUNT(*) FROM {} WHERE {};", $model,condition);
-        let result = $connection.query(&count, &values).unwrap();
-        let mut z = HashMap::new();
-        for count in result.iter() {
-            let count: i64 = count.get(0);
-            z.insert("count", count);
-        }
-        // z.insert("c","c");
-        z
-    }};
-    (connection => $connection:expr,model:$model:expr,count:{
-       $($value:expr),*
-    }) => {{
-      use std::collections::HashMap;
-        let mut value = String::new();
-        // // let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx += 1;
-            value.push_str(&format!("{},",&$value));
-        )*
-        let value = value.trim_end_matches(",");
-        let count = format!("SELECT COUNT(DISTINCT({})) FROM {};", value,$model);
-        // println!("{}",count);
-        let result = $connection.query(&count, &[]).unwrap();
-        let mut z = HashMap::new();
-        for count in result.iter() {
-            let count: i64 = count.get(0);
-            z.insert("count", count);
-        }
-        // z.insert("c","c");
-        z
-    }};
-    (connection => $connection:expr,model:$model:expr,count:{
+    (connection => $connection:expr,
+    model:$model:expr,
+    count:{
         $($count_value:expr),*
-     },conditions:{
-        $($condition:expr => $value:expr),*
-     }) => {{
+    },
+    $(
+        conditions:{
+            $(and => {$($condition:expr => $value:expr),*})?
+            $(or => {$($or_condition:expr => $or_value:expr),*})?
+        }
+    )?
+    $(
+       ,group_by:{
+            $($group_value:expr),*
+         }
+    )?
+    ) => {{
       use std::collections::HashMap;
       use postgres::types::ToSql;
 
          let mut value = String::new();
          let mut conditions = String::new();
          let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
+         let mut groupby = String::new();
          let mut idx = 0;
          $(
              value.push_str(&format!("{},",&$count_value));
          )*
+        $(
+            $(
+                groupby.push_str(&format!("{},",&$group_value));
+            )*
+        )?
          $(
-            idx += 1;
-            conditions.push_str(&format!("{}=${}",$condition,idx));
-            values.push(&$value);
-         )*
+            $(
+                $(
+                    idx += 1;
+                    conditions.push_str(&format!("CAST({} AS TEXT) = ${} AND ",$condition,idx));
+                    values.push(&$value);
+                )*
+            )?
+        )?
+        $(
+            $(
+                $(
+                idx += 1;
+                conditions.push_str(&format!("CAST({} AS TEXT) = ${} OR ",$or_condition,idx));
+                values.push(&$or_value);
+                )*
+            )?
+        )?
          let value = value.trim_end_matches(",");
-         let count = format!("SELECT COUNT(DISTINCT({})) FROM {} WHERE {};", value,$model,conditions);
+         let conditions = conditions.trim_end_matches("AND ");
+         let conditions = conditions.trim_end_matches("OR ");
+         let groupby = groupby.trim_end_matches(",");
+         let mut count = format!("SELECT COUNT(DISTINCT({})) FROM {}", value,$model);
         //  println!("{}",count);
         //  println!("{:?}",values);
+        if conditions.len() != 0 {
+            count.push_str(&format!(" WHERE {}",conditions));
+        }
+        if groupby.len() != 0 {
+            count.push_str(&format!(" GROUP BY {}",groupby));
+        }
+        count.push_str(";");
+        // println!("{}",count);
          let result = $connection.query(&count, &values).unwrap();
         //  println!("{:?}",result);
          let mut z = HashMap::new();
@@ -4267,420 +2301,106 @@ macro_rules! count {
         //  z.insert("c","c");
          z
      }};
-
-    // (connection => $connection:expr,model:$model:expr,group:{
-    //     $($value:expr),*
-    //  }) => {{
-    //      let mut value = String::new();
-    //      // // let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-    //      let mut idx = 0;
-    //      $(
-    //          idx += 1;
-    //          value.push_str(&format!("{},",&$value));
-    //      )*
-    //      let value = value.trim_end_matches(",");
-    //      let count = format!("SELECT {} ,COUNT(*) FROM {} GROUP BY {};", value,$model,value);
-    //     //  println!("{}",count);
-    //      let result = $connection.query(&count, &[]).unwrap();
-    //      let mut z = HashMap::new();
-    //      for count in result.iter() {
-    //          let value: String = count.get(0);
-    //          let counts: i32 = count.get(1);
-    //          let count: i64 = count.get(2);
-    //         println!("{}",count);
-    //          z.insert(value, counts);
-    //      }
-    //      // z.insert("c","c");
-    //      z
-    //  }};
 }
 
-#[cfg(feature = "pagination")]
-#[macro_export]
-macro_rules! pagination {
-    (@format $connection:expr,$model:expr,$client:expr) => {
-    {
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-            let mut billionaires = Vec::new();
-            for billionaire in $client.iter() {
-                let mut collection = Vec::new();
-                let billionaire_column = billionaire.columns();
-                for billionaires in billionaire_column.iter() {
-                    let mut map = BTreeMap::new();
-
-                    let name = billionaires.name();
-                    let billion = billionaires.type_().name();
-
-                    // println!("{:?}", billion);
-
-                    let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-    }
-      };
-    (connection => $connection:expr,model:$model:expr,take:$take:expr,skip:$skip:expr,select:{$($select:expr),*},conditions:{$($condition:expr => $value:expr)*}) => {
-        {
-          use postgres::types::ToSql;
-
-        let mut select = String::new();
-        let mut condition = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut selection = String::new();
-        let mut idx = 0;
-        $(
-            select.push_str(&format!("{},",$select));
-            selection.push_str(&format!("'{}',",$select));
-        )*
-        $(
-            idx+=1;
-            condition.push_str(&format!("{} = ${}",$condition,idx));
-            values.push(&$value);
-        )*
-        let select = select.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-        let condition = condition.trim_end_matches(",");
-        let pagination = format!("SELECT {} FROM {} WHERE {} LIMIT {} OFFSET {};",select,$model,condition,$take,$skip);
-        // println!("{}",pagination);
-        // println!("{:?}",values);
-        let client = $connection.query(&pagination,&values).unwrap();
-        // println!("{:?}",client);
-        pagination!(@format $connection,$model,client)
-    }
-    };
-    (connection => $connection:expr,model:$model:expr,take:$take:expr,skip:$skip:expr,conditions:{$($condition:expr => $value:expr)*}) => {
-        {
-          use postgres::types::ToSql;
-
-        let mut condition = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx+=1;
-            condition.push_str(&format!("{} = ${} AND ",$condition,idx));
-            values.push(&$value);
-        )*
-
-        let condition = condition.trim_end_matches("AND ");
-        let pagination = format!("SELECT * FROM {} WHERE {} LIMIT {} OFFSET {};",$model,condition,$take,$skip);
-        // println!("{}",pagination);
-        // println!("{:?}",values);
-        let client = $connection.query(&pagination,&values).unwrap();
-        pagination!(@format $connection,$model,client)
-    }
-    };
-    (connection => $connection:expr,model:$model:expr,take:$take:expr,skip:$skip:expr,
-        search:{$($search_value:expr => $search:expr),*},conditions:{$($condition:expr => $value:expr)*}) => {
-        {
-          use postgres::types::ToSql;
-
-            let mut search = String::new();
-        let mut condition = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut idx = 0;
-        $(
-            idx+=1;
-            condition.push_str(&format!("{} = ${} AND ",$condition,idx));
-        )*
-        $(
-            values.push(&$value);
-        )*
-        $(
-            values.push(&$search);
-        )*
-        $(
-            idx +=1;
-            search.push_str(&format!("CAST({} AS TEXT) ILIKE '%' || ${} || '%' OR ",$search_value,idx));
-        )*
-        let mut search = search.trim_end_matches("OR ");
-        condition.push_str(&format!("{}",search));
-        let pagination = format!("SELECT * FROM {} WHERE {} LIMIT {} OFFSET {};",$model,condition,$take,$skip);
-                // println!("{}",pagination);
-                // println!("{:?}",values);
-        let client = $connection.query(&pagination,&values).unwrap();
-        pagination!(@format $connection,$model,client)
-    }
-    };
-    (connection => $connection:expr,model:$model:expr,take:$take:expr,skip:$skip:expr,
-        search:{$($search_value:expr => $search:expr),*},select:{$($select:expr),*},conditions:{$($condition:expr => $value:expr)*}) => {
-        {
-          use postgres::types::ToSql;
-
-            let mut search = String::new();
-        let mut condition = String::new();
-        let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut select = String::new();
-        let mut selection = String::new();
-        let mut idx = 0;
-        $(
-            idx+=1;
-            condition.push_str(&format!("{} = ${} AND ",$condition,idx));
-        )*
-        $(
-            values.push(&$value);
-        )*
-        $(
-            values.push(&$search);
-        )*
-        $(
-            select.push_str(&$select);
-        )*
-        $(
-            selection.push_str(&format!("'{}',",&$select));
-        )*
-        $(
-            idx +=1;
-            search.push_str(&format!("CAST({} AS TEXT) ILIKE '%' || ${} || '%' OR ",$search_value,idx));
-        )*
-        let mut search = search.trim_end_matches("OR ");
-        let select = select.trim_end_matches(",");
-        let selection = selection.trim_end_matches(",");
-        condition.push_str(&format!("{}",search));
-        let pagination = format!("SELECT * FROM {} WHERE {} LIMIT {} OFFSET {};",$model,condition,$take,$skip);
-                // println!("{}",pagination);
-                // println!("{:?}",values);
-        let client = $connection.query(&pagination,&values).unwrap();
-        pagination!(@format $connection,$model,client)
-    }
-    }
-}
-
-#[cfg(feature = "full_search")]
+///
+/// # Usage
+///
+/// ```
+/// let search = full_search! {
+///     connection => postgres,
+///     model:"place",
+///     based_on:"name",
+///     search:{
+///         value:"billionaire"
+///     },
+///     select:{
+///         ,"name"
+///     },
+///     take:6,
+///     skip:0
+/// };
+/// ```
+///
+// #[cfg(feature = "full_search")]
 #[macro_export]
 macro_rules! full_search {
-  // (@format $connection:expr,$model:expr,$client:expr) => {};
-  // (@select $connection,$model:expr,$selection:expr,$client:expr) => {};
-  (@format $connection:expr,$model:expr,$client:expr) => {
-    {
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-        let mut billionaires = Vec::new();
-        for billionaire in $client.iter() {
-            let mut collection = Vec::new();
-            let billionaire_column = billionaire.columns();
-            for billionaires in billionaire_column.iter() {
-                let mut map = BTreeMap::new();
-
-                let name = billionaires.name();
-                let billion = billionaires.type_().name();
-
-                // println!("{:?}", billion);
-
-                let value = match billion.clone() {
-                    "text" => {
-                        let value: String = billionaire.get(name);
-                        value
-                    }
-                    "date" => {
-                        let value: NaiveDate = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "timestamp" => {
-                        let value: NaiveDateTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int4" => {
-                        let value: i32 = billionaire.get(name);
-                        value.to_string()
-                    }
-                                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "time" => {
-                        let value: NaiveTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "uuid" => {
-                        let value: Uuid = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "bool" => {
-                        let value: bool = billionaire.get(name);
-                        value.to_string()
-                    }
-                    _ => {
-                        panic!("")
-                    }
-                };
-                map.insert(name.to_string(), value);
-                collection.push(map)
-            }
-            // println!("{:?}",collection);
-            billionaires.push(collection);
+    (connection => $connection:expr,model:$model:expr,based_on:$search:expr,search:{
+        value:$value:expr
+    }$(
+        ,select:{
+            $($select:expr),*
         }
-    billionaires
-    }
-  };
-    (connection => $connection:expr,model:$model:expr,based_on:$search:expr,search:{
-        value:$value:expr
-    }) => {{
-        let rank = format!(
-            "SELECT * FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",
-            $model, $search, $value
-        );
-        // println!("{}",rank);
-        let client = $connection.query(&rank, &[]).unwrap();
-        full_search!(@format $connection,$model,client)
-    }};
-    (connection => $connection:expr,model:$model:expr,based_on:$search:expr,search:{
-        value:$value:expr
-    },select:{
-        $($select:expr),*
-    }) => {{
-        let mut select = String::new();
+    )?
+    $(,take:$take:expr)?
+    $(,skip:$skip:expr)?
+    ) => {{
         let mut selection = String::new();
         $(
-            select.push_str(&format!("{},",$select));
-            selection.push_str(&format!("'{}',",$select));
-        )*
-        let select = select.trim_end_matches(",");
+            $(
+                selection.push_str(&format!("{},",$select));
+            )*
+        )?
         let selection = selection.trim_end_matches(",");
-        let rank = format!(
-            "SELECT {} FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",
-            select,$model, $search, $value
-        );
+
+        let mut query = format!("SELECT ");
         // println!("{}",rank);
-        let client = $connection.query(&rank, &[]).unwrap();
-        full_search!(@format $connection,$model,client)
+
+        if selection.len() != 0 {
+            query.push_str(&format!("{}",selection));
+        }else {
+            query.push_str("*");
+        }
+        query.push_str(&format!(" FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",$model, $search, $value));
+        $(
+            query.push_str(&format!(" LIMIT {}",$take));
+        )?
+        $(
+            query.push_str(&format!(" OFFSET {}",$skip));
+        )?
+        let client = $connection.query(&query, &[]);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = formats!{
+                         client
+                };
+                Ok(client)
+            }
+        }
     }};
 }
 
-#[cfg(feature = "ranked_search")]
+///
+/// # Usage
+///
+/// ```
+/// let search = ranked_search! {
+///     connection => postgres,
+///     model:"place",
+///     based_on:"name",
+///     search:{
+///         value:"billionaire"
+///     },
+///     select:{
+///         "name"
+///     }
+/// };
+/// ```
+///
+///
+// #[cfg(feature = "ranked_search")]
 #[macro_export]
 macro_rules! ranked_search {
-    (@format $connection:expr,$model:expr,$client:expr) => {
-    {
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-            let mut billionaires = Vec::new();
-            for billionaire in $client.iter() {
-                let mut collection = Vec::new();
-                let billionaire_column = billionaire.columns();
-                for billionaires in billionaire_column.iter() {
-                    let mut map = BTreeMap::new();
-
-                    let name = billionaires.name();
-                    let billion = billionaires.type_().name();
-
-                    // println!("{:?}", billion);
-
-                    let value = match billion.clone() {
-                        "text" => {
-                            let value: String = billionaire.get(name);
-                            value
-                        }
-                        "date" => {
-                            let value: NaiveDate = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "timestamp" => {
-                            let value: NaiveDateTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int4" => {
-                            let value: i32 = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                        }
-                        "time" => {
-                            let value: NaiveTime = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "uuid" => {
-                            let value: Uuid = billionaire.get(name);
-                            value.to_string()
-                        }
-                        "bool" => {
-                            let value: bool = billionaire.get(name);
-                            value.to_string()
-                        }
-                        _ => {
-                            panic!("")
-                        }
-                    };
-                    map.insert(name.to_string(), value);
-                    collection.push(map)
-                }
-                // println!("{:?}",collection);
-                billionaires.push(collection);
-            }
-        billionaires
-    }
-      };
     (connection => $connection:expr,model:$model:expr,based_on:$search:expr,search:{
         value:$value:expr
-    }) => {{
-        #[derive(Debug,Clone)]
-        pub struct Score {
-            score:f32,
-            data:String
-        };
-        let rank = format!(
-            "SELECT * , ts_rank_cd(to_tsvector('english',{}),to_tsquery('{}')) FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",
-            $search,$value,$model, $search, $value
-        );
-        let client = $connection.query(&rank, &[]).unwrap();
-        ranked_search!(@format client,$model,$connection)
-    }};
-    (connection => $connection:expr,model:$model:expr,based_on:$search:expr,search:{
-        value:$value:expr
-    },select:{
-        $($select:expr),*
-    }) => {{
+    },$(
+        select:{
+            $($select:expr),*
+        }
+    )?) => {{
         #[derive(Debug,Clone)]
         pub struct Score {
             score:f32,
@@ -4689,21 +2409,67 @@ macro_rules! ranked_search {
         let mut select = String::new();
         let mut selection = String::new();
         $(
-            select.push_str(&format!("{},",$select));
-            selection.push_str(&format!("'{}',",$select));
-        )*
+            $(
+                select.push_str(&format!("{},",$select));
+                selection.push_str(&format!("'{}',",$select));
+            )*
+        )?
         let select = select.trim_end_matches(",");
         let selection = selection.trim_end_matches(",");
-        let rank = format!(
-            "SELECT {} , ts_rank_cd(to_tsvector('english',{}),to_tsquery('{}')) FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",
-            select,$search,$value,$model, $search, $value
-        );
+
+        if selection.len() != 0 {
+            let rank = format!(
+                "SELECT {} , ts_rank_cd(to_tsvector('english',{}),to_tsquery('{}')) FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",
+                select,$search,$value,$model, $search, $value
+            );
+            let client = $connection.query(&rank, &[]);
+            println!("{:?}",client);
+            match client {
+                Err(error) => {
+                    Err(io::Error::new(io::ErrorKind::NotFound, error))
+                },
+                Ok(client) => {
+                    let client = formats!{
+                             client
+                    };
+                    Ok(client)
+                }
+            }
+        }
+        else {
+            let rank = format!(
+                "SELECT * , ts_rank_cd(to_tsvector('english',{}),to_tsquery('{}')) FROM {} WHERE to_tsvector('english',CAST({} AS TEXT)) @@  to_tsquery(CAST('{}' AS TEXT))",
+                $search,$value,$model, $search, $value
+            );
+            let client = $connection.query(&rank, &[]);
+            println!("{:?}",client);
+            match client {
+                Err(error) => {
+                    Err(io::Error::new(io::ErrorKind::NotFound, error))
+                },
+                Ok(client) => {
+                    let client = formats!{
+                             client
+                    };
+                    Ok(client)
+                }
+            }
+        }
         // println!("{}",rank);
-        let client = $connection.query(&rank, &[]).unwrap();
-        ranked_search!(@format $connection,$model,selection,client)
     }};
 }
 
+///
+/// # Usage
+///
+/// ```
+/// let partition = create_partition {
+///     connection => postgres,
+///     model:"place",
+///     name:"partition_name",
+///     field:"value_to_match"
+/// }
+/// ```
 #[cfg(feature = "partition")]
 #[macro_export]
 macro_rules! create_partition {
@@ -4717,22 +2483,19 @@ macro_rules! create_partition {
     }};
 }
 
-// #[macro_export]
-// macro_rules! partitions {
-//     (connection => $connection:expr,model:$model:expr,value:$value:expr,partition:$partition:expr) => {{
-//         let partition = format!(
-//             "CREATE TABLE {} PARTITION OF {} FOR VALUES IN ('{}');",
-//             $value, $model, $partition
-//         );
-//         println!("{}", partition);
-//         $connection.execute(&partition, &[])
-//     }};
-// }
-
-/// (connection => $connection:expr,
-/// model:$model:expr,
-/// name:$name:expr,
-/// based_on:{$based_on:expr => $value:expr}) => {}
+///
+/// # Usage
+///
+/// ```
+/// horizontal_splitting {
+///     connection => postgres,
+///     model:"",
+///     name:"name_of_spllit",
+///     based_on:{
+///     "country" => "usa"    
+///     }
+/// }
+/// ```
 #[cfg(feature = "horizontal_split")]
 #[macro_export]
 macro_rules! horizontal_splitting {
@@ -4777,160 +2540,90 @@ macro_rules! horizontal_splitting {
     }};
 }
 
-#[cfg(feature = "geography")]
+///
+/// # Usage
+///
+/// ```
+/// let query = custome_query {
+///     connection => postgres,
+///     query:{
+///         "SELECT * FROM place WHERE name = $1"
+///     },
+///     value:{
+///         "billionaires"
+///     }
+/// }
+/// ```
+// #[cfg(feature = "geography")]
 #[macro_export]
 macro_rules! custome_query {
-    (connection => $connection:expr,query:{$query:expr}) => {{
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use std::panic;
-        use uuid::Uuid;
-
-        let format = format!("{}", $query);
-        let client = $connection.query(&format, &[]).unwrap();
-        let mut billionaires = Vec::new();
-        for billionaire in client.iter() {
-            let mut collection = Vec::new();
-            let billionaire_column = billionaire.columns();
-            for billionaires in billionaire_column.iter() {
-                let mut map = BTreeMap::new();
-
-                let name = billionaires.name();
-                let billion = billionaires.type_().name();
-
-                // println!("{:?}", billion);
-
-                let value = match billion.clone() {
-                    "text" => {
-                        let value: String = billionaire.get(name);
-                        value
-                    }
-                    "date" => {
-                        let value: NaiveDate = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "timestamp" => {
-                        let value: NaiveDateTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int4" => {
-                        let value: i32 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    // "numeric" => {
-                    //     let value: f64 = billionaire.get(name);
-                    //     value.to_string()
-                    // }
-                    "time" => {
-                        let value: NaiveTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "uuid" => {
-                        let value: Uuid = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "bool" => {
-                        let value: bool = billionaire.get(name);
-                        value.to_string()
-                    }
-                    _ => {
-                        panic!("Error:provided unknown value called {}", billion)
-                    }
-                };
-                map.insert(name.to_string(), value);
-                collection.push(map)
-            }
-            // println!("{:?}",collection);
-            billionaires.push(collection);
-        }
-        billionaires
-    }};
-    (connection => $connection:expr,query:{$query:expr,value:{$($value:expr),*}}) => {{
+    (connection => $connection:expr,query:{$($query:expr),*} $(,value:{$($value:expr),*})?) => {{
         use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
         use postgres::types::ToSql;
         use std::collections::BTreeMap;
         use std::panic;
         use uuid::Uuid;
 
-        let format = format!("{}", $query);
+        let mut query = String::new();
+        $(
+            let format = format!("{}\r\n", $query);
+            query.push_str(&format);
+        )*
         let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let client = $connection.query(&format, &value).unwrap();
-        let mut billionaires = Vec::new();
-        for billionaire in client.iter() {
-            let mut collection = Vec::new();
-            let billionaire_column = billionaire.columns();
-            for billionaires in billionaire_column.iter() {
-                let mut map = BTreeMap::new();
-
-                let name = billionaires.name();
-                let billion = billionaires.type_().name();
-
-                // println!("{:?}", billion);
-
-                let value = match billion.clone() {
-                    "text" => {
-                        let value: String = billionaire.get(name);
-                        value
-                    }
-                    "date" => {
-                        let value: NaiveDate = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "timestamp" => {
-                        let value: NaiveDateTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int4" => {
-                        let value: i32 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "time" => {
-                        let value: NaiveTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "uuid" => {
-                        let value: Uuid = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "bool" => {
-                        let value: bool = billionaire.get(name);
-                        value.to_string()
-                    }
-                    _ => {
-                        panic!("")
-                    }
+        $(
+            $(
+                value.push(&$value);
+            )*
+        )?
+        let client = $connection.query(&format, &value);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = formats!{
+                         client
                 };
-                map.insert(name.to_string(), value);
-                collection.push(map)
+                Ok(client)
             }
-            // println!("{:?}",collection);
-            billionaires.push(collection);
         }
-        billionaires
     }};
 }
 
+///
+/// # Usage
+///
+/// ```
+/// let partition = custome_execute! {
+///     connection => postgres,
+///     query:{
+///         "INSERT INTO place VALUES ($1)"
+///     },
+///     value:{
+///         "billionaires"
+///     }
+/// };
+/// ```
 #[macro_export]
 macro_rules! custome_execute {
-    (connection => $connection:expr,query:{$query:expr}) => {
-        let format = format!("{}", query);
-        $connection.execute(&format, &[])
-    };
-    (connection => $connection:expr,query:{$query:expr,value:{$($value:expr),*}}) => {
-        use postgres::types::ToSql;
+    (connection => $connection:expr,query:{$($query:expr),*} $(,value:{$($value:expr),*})?) => {
+        {
+            use postgres::types::ToSql;
 
-        let format = format!("{}", query);
-        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let client = $connection.execute(&format, &value);
-        client
+            let mut query = String::new();
+            $(
+                let format = format!("{}\r\n", $query);
+                query.push_str(&format);
+            )*
+            let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
+            $(
+                $(
+                    value.push(&$value);
+                )*
+            )?
+            let client = $connection.execute(&format, &value);
+            client
+        }
     };
 }
 
@@ -4939,318 +2632,137 @@ macro_rules! custome_execute {
 ///
 /// ```
 /// let location = nearby_location! {
-/// connection => postgres,
-/// model:"shop",
-/// select:{
-///     "other_than_location_type"
-/// },
-/// location:{
-///     lattitude:"12.971599",
-///     longitude:"77.594566"
-/// },
-/// select_from:{
-///     "location"
-/// }
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{
+///         "place"
+///     },
+///     location:{
+///         lattitude:"12.971560",
+///         longitude:"77.594560",
+///         within:"4000"               //optional
+///     },
+///     select_from:{
+///         "location"
+///     },
+///     order:{                 //optiona
+///         location:"asc",     //optional
+///         "place" => "asc"    //optional
+///     }
 /// };
 /// ```
-///
-///
-/// ```
-/// let location = nearby_location!(
-/// connection => conn,
-/// model: "places",
-/// select: {"id", "name"},
-/// location: {
-///     lattitude: 37.7749,
-///     longitude: -122.4194
-/// },
-/// select_from: {"geom"},
-/// order: {"ASC"}
-/// );
-/// ```
-/// ```
-/// let location = nearby_location!(
-/// connection => conn,
-/// model: "restaurants",
-/// select: {"id", "name", "rating"},
-/// location: {
-///     lattitude: 40.7128,
-///     longitude: -74.0060,
-///     within: 5000
-/// },
-/// select_from: {"location"},
-/// order: {"ASC"}
-/// );
-/// ```
-/// ```
-/// let location = nearby_location!(
-/// connection => conn,
-/// model: "hotels",
-/// select: {"id", "name"},
-/// location: {
-///     lattitude: 48.8566,
-///     longitude: 2.3522,
-///     within: 1000
-/// },
-/// select_from: {"coordinates"}
-/// );
-/// ```
-/// ```
-/// let location = nearby_location!(
-/// connection => conn,
-/// model: "landmarks",
-/// select: {"id", "name", "address"},
-/// location: {
-///     lattitude: 51.5074,
-///     longitude: -0.1278
-/// },
-/// select_from: {"geo_column"}
-/// );
-/// ```
 #[macro_export]
+#[cfg(feature = "geography")]
 macro_rules! nearby_location {
-    (@format $connection:expr,$model:expr,$client:expr) => {{
-        use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        use std::collections::BTreeMap;
-        use uuid::Uuid;
-        use std::panic;
-
-        let mut billionaires = Vec::new();
-        for billionaire in $client.iter() {
-            let mut collection = Vec::new();
-            let billionaire_column = billionaire.columns();
-            for billionaires in billionaire_column.iter() {
-                let mut map = BTreeMap::new();
-
-                let name = billionaires.name();
-                let billion = billionaires.type_().name();
-
-                // println!("{:?}", billion);
-
-                let value = match billion.clone() {
-                    "text" => {
-                        let value: String = billionaire.get(name);
-                        value
-                    }
-                    "date" => {
-                        let value: NaiveDate = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "timestamp" => {
-                        let value: NaiveDateTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "int4" => {
-                        let value: i32 = billionaire.get(name);
-                        value.to_string()
-                    }
-                                        "int8" => {
-                        let value: i64 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "time" => {
-                        let value: NaiveTime = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "uuid" => {
-                        let value: Uuid = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "bool" => {
-                        let value: bool = billionaire.get(name);
-                        value.to_string()
-                    }
-                    "float8" => {
-                        let value: f64 = billionaire.get(name);
-                        value.to_string()
-                    }
-                    _ => {
-                        panic!("{}", billion)
-                    }
-                };
-                map.insert(name.to_string(), value);
-                collection.push(map)
+    (connection => $connection:expr,model:$model:expr
+        $(
+            ,select:{
+                $($select:expr),*
             }
-            // println!("{:?}",collection);
-            billionaires.push(collection);
-        }
-        billionaires
-    }};
-    (connection => $connection:expr,model:$model:expr,select:{$($select:expr),*},location:{
-        lattitude:$lattitude:expr,
-        longitude:$longitude:expr
-    },select_from:{$select_location:expr},
-    order:{$order:expr}
-) => {
-    {
-        use postgres::types::ToSql;
-
-        if $lattitude.is_empty() {
-            panic!("Provide Value for lattitude in float")
-        }
-        if $longitude.is_empty() {
-            panic!("Provide Value for longitude in float")
-        }
-
-        let mut selection = String::new();
-        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-        let mut idx = 0;
-        idx += 1;
-        value.push(&$longitude);
-        let longitude = format!("${}",idx);
-        value.push(&$lattitude);
-        idx += 1;
-        let lattitude = format!("${}",idx);
-
-        $(
-            let select = format!("{},",$select);
-            selection.push_str(&select);
-        )*
-
-        let selection = selection.trim_end_matches(",");
-
-        let location = format!("WITH current_location AS (
-            SELECT ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')') AS c_location
-        )
-        SELECT {},ST_AsGeoJson({}) as location,ST_Distance({}, cl.c_location) as distance FROM {} , current_location cl ORDER BY distance {};
-        ",longitude,lattitude,selection,$select_location,$select_location,$model,$order.to_uppercase());
-        // println!("{}",location);
-        // println!("{:?}",value);
-        let client = $connection.query(&location,&value).unwrap();
-        nearby_location!(@format $connection,$model,client)
-    }};
-    (connection => $connection:expr,model:$model:expr,select:{$($select:expr),*},location:{
-        lattitude:$lattitude:expr,
-        longitude:$longitude:expr,
-        within:$within:expr
-    },select_from:{$select_location:expr},
-    order:{$order:expr}
-) => {
-    {
-        use postgres::types::ToSql;
-
-        if $lattitude.is_empty() {
-            panic!("Provide Value for lattitude in float")
-        }
-        if $longitude.is_empty() {
-            panic!("Provide Value for longitude in float")
-        }
-
-        let mut selection = String::new();
-        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-        let mut idx = 0;
-        idx += 1;
-        value.push(&$longitude);
-        let longitude = format!("${}",idx);
-        value.push(&$lattitude);
-        idx += 1;
-        let lattitude = format!("${}",idx);
-
-        $(
-            let select = format!("{},",$select);
-            selection.push_str(&select);
-        )*
-
-        let selection = selection.trim_end_matches(",");
-
-        let location = format!("WITH current_location AS (
-            SELECT ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')') AS c_location
-        )
-        SELECT {},ST_AsGeoJson({}) as location,ST_Distance({}, cl.c_location) as distance FROM {} , current_location cl WHERE ST_DWithin({},cl.c_location,{}) ORDER BY distance {};
-        ",longitude,lattitude,selection,$select_location,$select_location,$model,$select_location,$within,$order.to_uppercase());
-        // println!("{}",location);
-        // println!("{:?}",value);
-        let client = $connection.query(&location,&value).unwrap();
-        nearby_location!(@format $connection,$model,client)
-    }};
-    (connection => $connection:expr,model:$model:expr,select:{$($select:expr),*},location:{
-        lattitude:$lattitude:expr,
-        longitude:$longitude:expr,
-        within:$within:expr
-    },select_from:{$select_location:expr}
-) => {
-    {
-        use postgres::types::ToSql;
-
-        if $lattitude.is_empty() {
-            panic!("Provide Value for lattitude in float")
-        }
-        if $longitude.is_empty() {
-            panic!("Provide Value for longitude in float")
-        }
-
-        let mut selection = String::new();
-        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-        let mut idx = 0;
-        idx += 1;
-        value.push(&$longitude);
-        let longitude = format!("${}",idx);
-        value.push(&$lattitude);
-        idx += 1;
-        let lattitude = format!("${}",idx);
-
-        $(
-            let select = format!("{},",$select);
-            selection.push_str(&select);
-        )*
-
-        let selection = selection.trim_end_matches(",");
-
-        let location = format!("WITH current_location AS (
-            SELECT ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')') AS c_location
-        )
-        SELECT {},ST_AsGeoJson({}) as location,ST_Distance({}, cl.c_location) as distance FROM {} , current_location cl WHERE ST_DWithin({},cl.c_location,{});
-        ",longitude,lattitude,selection,$select_location,$select_location,$model,$select_location,$within);
-        // println!("{}",location);
-        // println!("{:?}",value);
-        let client = $connection.query(&location,&value).unwrap();
-        nearby_location!(@format $connection,$model,client)
-    }};
-    (connection => $connection:expr,model:$model:expr,select:{$($select:expr),*},location:{
-        lattitude:$lattitude:expr,
-        longitude:$longitude:expr
-    },select_from:{$select_location:expr}
-) => {
-    {
-        if $lattitude.is_empty() {
-            panic!("Provide Value for lattitude in float")
-        }
-        if $longitude.is_empty() {
-            panic!("Provide Value for longitude in float")
-        }
-
-        use postgres::types::ToSql;
-
-        let mut selection = String::new();
-        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
-
-        let mut idx = 0;
-        idx += 1;
-        value.push(&$longitude);
-        let longitude = format!("${}",idx);
-        value.push(&$lattitude);
-        idx += 1;
-        let lattitude = format!("${}",idx);
-
-        $(
-            let select = format!("{},",$select);
-            selection.push_str(&select);
-        )*
-
-        let selection = selection.trim_end_matches(",");
-
-        let location = format!("WITH current_location AS (
-            SELECT ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')') AS c_location
-        )
-        SELECT {},ST_Distance({}, cl.c_location) as distance FROM {} , current_location cl;
-        ",longitude,lattitude,selection,$select_location,$model);
-        // println!("{}",location);
-        // println!("{:?}",value);
-        let client = $connection.query(&location,&value).unwrap();
-        nearby_location!(@format $connection,$model,client)
+        )?
+        ,location:{
+            lattitude:$lattitude:expr,
+            longitude:$longitude:expr
+            $(,within:$within:expr)?
+    },select_from:{
+        $select_location:expr
     }
-};
+    $(
+        ,order:{
+            $(location:$location_order:expr)?
+            $(
+                ,$(
+                    $order:expr => $orderby:expr
+                ),*
+            )?
+        }
+    )?
+) => {
+    {
+        use postgres::types::ToSql;
+
+        if $lattitude.is_empty() {
+            panic!("Provide Value for lattitude in float")
+        }
+        if $longitude.is_empty() {
+            panic!("Provide Value for longitude in float")
+        }
+
+        let mut selection = String::new();
+        let mut value: Vec<&(dyn ToSql + Sync)> = Vec::new();
+        let mut order = String::new();
+
+        let mut idx = 0;
+        idx += 1;
+        value.push(&$longitude);
+        let longitude = format!("${}",idx);
+        value.push(&$lattitude);
+        idx += 1;
+        let lattitude = format!("${}",idx);
+
+        $(
+            $(
+                let select = format!("{},",$select);
+                selection.push_str(&select);
+            )*
+        )?
+        $(
+            $(
+                $(
+                    if !["asc","desc","ASC","DESC"].contains(&$orderby){
+                        panic!("Provide Correct Order")
+                    }
+                    else {
+                        let orders = format!("{} {},",$order,$orderby.to_uppercase());
+                        order.push_str(&orders);
+                    }
+                )?
+            )*
+        )?
+
+        let selection = selection.trim_end_matches(",");
+        let order = order.trim_end_matches(",");
+
+        let mut location = format!("WITH current_location AS (
+            SELECT ST_GeogFromText('SRID=4326;POINT('||{}||' '||{}||')') AS c_location
+        )
+        SELECT {},ST_AsGeoJson({}) as location,ST_Distance({}, cl.c_location) as distance FROM {} , current_location cl WHERE ST_DWithin({},cl.c_location
+        ",longitude,lattitude,selection,$select_location,$select_location,$model,$select_location);
+        // ,{})
+        $(
+            location.push_str(&format!(",{})",$within));
+        )?
+        if !location.ends_with(")"){
+            location.push_str(",0)");
+        }
+        $(
+            $(
+                let orders = format!(" ORDER BY distance {}",$location_order);
+                location.push_str(&orders);
+            )?
+        )?
+
+        if order.len() != 0 {
+            if location.contains("ORDER BY"){
+                location.push_str(&format!(",{}",order));
+            }
+            else{
+                location.push_str(&format!(" ORDER BY {}",order));
+            }
+        }
+        println!("{}",location);
+        println!("{:?}",value);
+        let client = $connection.query(&location,&value);
+        match client {
+            Err(error) => {
+                Err(io::Error::new(io::ErrorKind::NotFound, error))
+            },
+            Ok(client) => {
+                let client = formats!{
+                         client
+                };
+                Ok(client)
+            }
+        }
+    }};
 }
