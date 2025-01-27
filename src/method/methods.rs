@@ -962,7 +962,7 @@ macro_rules! delete_table {
 ///     select:{               // optional
 ///         "place"
 ///     },
-///     case:{
+///     case:{              //optional
 ///     (
 ///         "place" => ">22",
 ///         "place" => "<22",
@@ -981,7 +981,27 @@ macro_rules! delete_table {
 ///             "place" => "san"
 ///         }
 ///     },      
-///     inside:{
+///     between => {                //optional
+///         and => {
+///             "place" => {
+///                 "20" => "22"
+///             }
+///         },
+///         or => {
+///             "place" => {
+///                 "20" => "22"
+///             }
+///         }
+///     },
+///     like => {               //optional
+///         and => {
+///             "name" => "billionaire"
+///         },
+///         or => {
+///             "billionaire" => "billionaire"
+///         }
+///     },
+///     inside:{                //optional
 ///         "place" => {
 ///             match:"user_id",
 ///             select:{
@@ -1029,8 +1049,8 @@ macro_rules! delete_table {
 #[macro_export]
 macro_rules! find_many {
     (connection => $connection:expr,
-        model:$model:expr,
-        $(match:$model_value:expr)?
+        model:$model:expr
+        $(,match:$model_value:expr)?
         $(,select:{$($select_value:expr),*})?
         $(
             ,case:{
@@ -1040,13 +1060,39 @@ macro_rules! find_many {
         $(,conditions : {
             $(and => {
                 $($and_key:expr => $and_value:expr),*
-            })?
+                }
+            )?
             $(,)?
             $(
                 or => {
-                $($or_key:expr => $or_value:expr),*
-            })?
+                    $($or_key:expr => $or_value:expr),*
+                }
+            )?
         }
+        )?
+        $(,)?
+        $(
+            ,between => {
+                $(and => {
+                    $($between:expr => {$between_value:expr => $between_value2:expr}),*
+                })?
+                $(,)?
+                $(or => {
+                    $($between_or:expr => {$between_value_or:expr => $between_value2_or:expr}),*
+                })?
+            }
+        )?
+        $(,)?
+        $(
+            ,like => {
+                $(and => {
+                    $($like:expr => $like_value:expr),*
+                })?
+                $(,)?
+                $(or => {
+                    $($like_or:expr => $like_value_or:expr),*
+                })?
+            }
         )?
         $(,inside:
         {
@@ -1109,6 +1155,7 @@ macro_rules! find_many {
         {
             use postgres::types::ToSql;
             use std::io;
+            use rusty_postgres::formats;
 
             let mut include = String::new();
             let mut relation = String::new();
@@ -1287,6 +1334,54 @@ macro_rules! find_many {
                     )*
                 )?
             )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let first = format!("${}",idx);
+                        values.push(&$between_value);
+                        idx+=1;
+                        let second = format!("${}",idx);
+                        values.push(&$between_value2);
+                        let between = format!(" CAST({} AS text) BETWEEN {} AND {} AND ",$between,first,second);
+                        conditions.push_str(&between);
+                    )*
+                )*
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let first = format!("${}",idx);
+                        values.push(&$between_value_or);
+                        idx+=1;
+                        let second = format!("${}",idx);
+                        values.push(&$between_value2_or);
+                        let between = format!(" CAST({} AS text) BETWEEN {} AND {} OR ",$between_or,first,second);
+                        conditions.push_str(&between);
+                    )*
+                )*
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        values.push(&$like_value);
+                        let like = format!("CAST({} AS text) LIKE '%' || ${} || '%' AND ",$like,idx);
+                        conditions.push_str(&like);
+                    )*
+                )*
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        values.push(&$like_value_or);
+                        let like = format!("CAST({} AS text) LIKE '%' || ${} || '%' OR ",$like_or,idx);
+                        conditions.push_str(&like);
+                    )*
+                )*
+            )?
             let conditions = conditions.trim_end_matches("AND ");
             let conditions = conditions.trim_end_matches("OR ");
             // $(
@@ -1365,11 +1460,11 @@ macro_rules! find_many {
             }
             $(
                 $(
-                    if !["asc","desc","ASC","DESC"].contains($orderby){
+                    if !["asc","desc","ASC","DESC"].contains(&$orderby){
                         panic!("Please Provide Correct Order ASC DESC")
                     }
                     else {
-                        let order = format!("{} {}",$order,$orderby)
+                        let order = format!("{} {}",$order,$orderby);
                         query.push_str(&format!(" ORDER BY {} {}",$order,$orderby))
                     }
                 )*
@@ -1382,7 +1477,7 @@ macro_rules! find_many {
             )?
             // println!("{}",conditions);
             // println!("{}",relation);
-            // println!("{}",query);
+            println!("{}",query);
             // println!("{:?}",values);
             let client = $connection.query(&query,&values);
             match client {
@@ -1499,6 +1594,17 @@ macro_rules! find_many {
     };
 }
 
+///
+/// # Usage
+///
+/// ```
+/// let drop = delete_many!{
+///     connection => postgres,
+///     model:"place"
+/// };
+/// ```
+///
+///
 #[macro_export]
 macro_rules! delete_many {
     // * all rows
@@ -1550,10 +1656,22 @@ macro_rules! delete {
         }
     )?
     $(
+        ,between => {
+            $(and => {
+                $($between:expr => {$between_value:expr => $between_value2:expr}),*
+            })?
+            $(,)?
+            $(or => {
+                $($between_or:expr => {$between_value_or:expr => $between_value2_or:expr}),*
+            })?
+        }
+    )?
+    $(
         ,cascade:$cascade:expr
     )?
         ) => {{
         use postgres::types::ToSql;
+        use rusty_postgres::formats;
 
         let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut selection = String::new();
@@ -1591,7 +1709,36 @@ macro_rules! delete {
                 )*
             )?
         )?
+        $(
+            $(
+                $(
+                    idx+=1;
+                    let first = format!("${}",idx);
+                    value.push(&$between_value);
+                    idx+=1;
+                    let second = format!("${}",idx);
+                    value.push(&$between_value2);
+                    let between = format!(" CAST({} AS text) BETWEEN {} AND {} AND ",$between,first,second);
+                    condition.push_str(&between);
+                )*
+            )*
+        )?
+        $(
+            $(
+                $(
+                    idx+=1;
+                    let first = format!("${}",idx);
+                    value.push(&$between_value_or);
+                    idx+=1;
+                    let second = format!("${}",idx);
+                    value.push(&$between_value2_or);
+                    let between = format!(" CAST({} AS text) BETWEEN {} AND {} OR ",$between_or,first,second);
+                    condition.push_str(&between);
+                )*
+            )*
+        )?
         let condition = condition.trim_end_matches("OR ");
+        let condition = condition.trim_end_matches("AND ");
 
         $(
             $(
@@ -1703,8 +1850,20 @@ macro_rules! update {
         $(,)?
         $(or => {$($conditions_or:expr => $value_or:expr),*})?
     })?
+    $(
+        ,between => {
+            $(and => {
+                $($between:expr => {$between_value:expr => $between_value2:expr}),*
+            })?
+            $(,)?
+            $(or => {
+                $($between_or:expr => {$between_value_or:expr => $between_value2_or:expr}),*
+            })?
+        }
+    )?
     ) => {{
         use postgres::types::ToSql;
+        use rusty_postgres::formats;
 
         let mut condition = String::new();
         let mut set = String::new();
@@ -1743,6 +1902,34 @@ macro_rules! update {
         )?
         $(
             $(
+                $(
+                    idx+=1;
+                    let first = format!("${}",idx);
+                    value.push(&$between_value);
+                    idx+=1;
+                    let second = format!("${}",idx);
+                    value.push(&$between_value2);
+                    let between = format!(" CAST({} AS text) BETWEEN {} AND {} AND ",$between,first,second);
+                    condition.push_str(&between);
+                )*
+            )*
+        )?
+        $(
+            $(
+                $(
+                    idx+=1;
+                    let first = format!("${}",idx);
+                    value.push(&$between_value_or);
+                    idx+=1;
+                    let second = format!("${}",idx);
+                    value.push(&$between_value2_or);
+                    let between = format!(" CAST({} AS text) BETWEEN {} AND {} OR ",$between_or,first,second);
+                    condition.push_str(&between);
+                )*
+            )*
+        )?
+        $(
+            $(
                 let selection = format!("{},",$select);
                 select.push_str(&selection);
             )*
@@ -1765,15 +1952,15 @@ macro_rules! update {
             query.push_str(&select);
         }
         query.push_str(";");
-        // println!("{}",query);
+        println!("{}",query);
         let client = $connection.query(&query,&value);
         match client {
             Err(error) => {
                 Err(io::Error::new(io::ErrorKind::NotFound, error))
             },
             Ok(client) => {
-                let client = format!{
-                        @format client
+                let client = formats!{
+                        client
                 };
                 Ok(client)
             }
@@ -1785,36 +1972,55 @@ macro_rules! update {
         $(,select:{
             $($select:expr),*
         })?
+        $(,conditions:{
+            $(and => {$($conditions:expr => $value:expr),*})?
+            $(or => {$($conditions_or:expr => $value_or:expr),*})?
+        })?
+        $(
+            ,between => {
+                $(and => {
+                    $($between:expr => {$between_value:expr => $between_value2:expr}),*
+                })?
+                $(,)?
+                $(or => {
+                    $($between_or:expr => {$between_value_or:expr => $between_value2_or:expr}),*
+                })?
+            }
+        )?
         ,inside:
         {
             $from:expr => {
                 match:$match:expr,
-                $(conditions : {
+                data:{
+                    $($data_from:expr => $data_value:expr),*
+                }
+                // $(,)?
+                $(,conditions : {
                     $(and => {$($and_from_key:expr => $and_from_value:expr),*})?
                     $(,)?
                     $(or => {$($or_from_key:expr => $or_from_value:expr),*})?
                 })?
                 $(,)?
-                data:{
-                    $($data_from:expr => $data_value:expr),*
-                }
-                $(,)?
                 $(
-                    select:{
+                    ,select:{
                     $(
                         $select_from:expr
                     ),*
                     }
                 )?
+                $(
+                    ,between => {
+                        $(and => {
+                            $($from_between:expr => {$from_between_value:expr => $from_between_value2:expr}),*
+                        })?
+                        $(,)?
+                        $(or => {
+                            $($from_between_or:expr => {$from_between_value_or:expr => $from_between_value2_or:expr}),*
+                        })?
+                    }
+                )?
             }
         }
-        $(,conditions:{
-            $(and => {$($conditions:expr => $value:expr),*})?
-            $(or => {$($conditions_or:expr => $value_or:expr),*})?
-        })?
-        // $(
-
-        // )?
         ) => {{
             use postgres::types::ToSql;
 
@@ -1822,6 +2028,7 @@ macro_rules! update {
             let mut relation = String::new();
             let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
             let mut updates = String::new();
+            use rusty_postgres::formats;
 
             // $(
                 // $(
@@ -1838,10 +2045,13 @@ macro_rules! update {
                 set.push_str(&update);
                 value.push(&$data_value);
 
+            )*
+            $(
                 $(
                     $(
                         idx+=1;
-                        let condition = format!("CAST({} AS text) = ${} AND ",$and_from_key,idx);
+                        // let b = $from.chars().nth(0).unwrap();
+                        let condition = format!("CAST({}.{} AS text) = ${} AND ",$from,$and_from_key,idx);
                         conditions.push_str(&condition);
 
                         value.push(&$and_from_value);
@@ -1850,19 +2060,104 @@ macro_rules! update {
                 $(
                     $(
                         idx+=1;
-                        let condition = format!("CAST({} AS text) = ${} OR ",$or_from_key,idx);
+                        let condition = format!("CAST({}.{} AS text) = ${} OR ",$from,$or_from_key,idx);
                         conditions.push_str(&condition);
 
                         value.push(&$or_from_value);
                     )*
                 )?
+            )*
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let and = format!("CAST({}.{} AS TEXT) = ${} AND ",$model,$conditions,idx);
+                        conditions.push_str(&and);
+
+                        value.push(&$value);
+                    )*
+                )?
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let or = format!("CAST({}.{} AS TEXT) = ${} OR ",$model,$conditions_or,idx);
+                        conditions.push_str(&or);
+
+                        value.push(&$value_or);
+                    )*
+                )?
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let first = format!("${}",idx);
+                        value.push(&$between_value);
+                        idx+=1;
+                        let second = format!("${}",idx);
+                        value.push(&$between_value2);
+                        let between = format!(" CAST({}.{} AS text) BETWEEN {} AND {} AND ",$model,$between,first,second);
+                        conditions.push_str(&between);
+                    )*
+                )*
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let first = format!("${}",idx);
+                        value.push(&$between_value_or);
+                        idx+=1;
+                        let second = format!("${}",idx);
+                        value.push(&$between_value2_or);
+                        let between = format!(" CAST({}.{} AS text) BETWEEN {} AND {} OR ",$model,$between_or,first,second);
+                        conditions.push_str(&between);
+                    )*
+                )*
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let first = format!("${}",idx);
+                        value.push(&$from_between_value);
+                        idx+=1;
+                        let second = format!("${}",idx);
+                        value.push(&$from_between_value2);
+                        let between = format!(" CAST({}.{} AS text) BETWEEN {} AND {} AND ",$from,$from_between,first,second);
+                        conditions.push_str(&between);
+                    )*
+                )*
+            )?
+            $(
+                $(
+                    $(
+                        idx+=1;
+                        let first = format!("${}",idx);
+                        value.push(&$from_between_value_or);
+                        idx+=1;
+                        let second = format!("${}",idx);
+                        value.push(&$from_between_value2_or);
+                        let between = format!(" CAST({}.{} AS text) BETWEEN {} AND {} OR ",$from,$from_between_or,first,second);
+                        conditions.push_str(&between);
+                    )*
+                )*
+            )?
+            $(
                 $(
                     let select = format!("{},",$select_from);
                     selection.push_str(&select);
                 )*
                 let conditions = conditions.trim_end_matches("AND ");
                 let conditions = conditions.trim_end_matches("OR ");
-                let conditions = format!("{}.{} = {}.{} AND ({})",$model,$model_value,$from,$match,conditions);
+                let mut condition = format!("{}.{} = {}.{} AND ",$model,$model_value,$from,$match);
+                if conditions.len() != 0 {
+                    condition.push_str(&format!("({})",conditions));
+                }
+                let condition = condition.trim_end_matches("AND ");
+                let condition = condition.trim_end_matches("OR ");
                 let selection = selection.trim_end_matches(",");
                 let set = set.trim_end_matches(",");
                 // println!("{}",set);
@@ -1872,9 +2167,9 @@ macro_rules! update {
                     update.push_str(&set);
                 }
                 update.push_str(&format!(" FROM {}",$model));
-                if conditions.len() != 0 {
-                    let conditions = format!(" WHERE {}",conditions);
-                    update.push_str(&conditions);
+                if condition.len() != 0 {
+                    let condition = format!(" WHERE {}",condition);
+                    update.push_str(&condition);
                 }
                 if selection.len() != 0 {
                     let selection = format!(" RETURNING {}",selection);
@@ -1884,13 +2179,14 @@ macro_rules! update {
                 // println!("{}",update);
                 updates.push_str(&update);
             )*
-            let transactions = format!("{}",updates);
+            // )*
+            // let transactions = format!("{}",updates);
             // println!("{}",transactions);
                 // )*
             // )?
-            // println!("{}",update);
+            // println!("{}",updates);
             // println!("{:?}",value);
-            let client = $connection.query(&transactions,&value);
+            let client = $connection.query(&updates,&value);
             // println!("{:?}",client);
             match client {
                 Err(error) => {
@@ -1946,7 +2242,7 @@ macro_rules! create {
         {
           use postgres::types::ToSql;
 
-            let mut data = String::new();
+        let mut data = String::new();
         let mut data_value = String::new();
         let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut select_value = String::new();
