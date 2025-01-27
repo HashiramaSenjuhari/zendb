@@ -206,13 +206,13 @@ let count = count! {
 
 ```rust
   let find = find_many! {
-     connection => postgres,
-     model:"billionaires",
-     select:{               // optional
+    connection => postgres,
+    model:"billionaires",
+    select:{               // optional
          "place"
-     },
-     case:{
-     (
+    },
+    case:{
+    (
          "place" => ">22",
          "place" => "<22",
          "place" => "=22"
@@ -220,36 +220,56 @@ let count = count! {
          ok:"billionaire",
          ok:"billionaire"
          ,else:"trillionaire"
-     ) => "status"
-     },
-     conditions:{           // optional
-         and => {
-             "place" => "san"
-         },
-         or => {
-             "place" => "san"
-         }
-     },
-     inside:{
-         "place" => {
-             match:"user_id",
-             select:{
-                 "name"
-             },
-             conditions:{
-                 and => {
-                     "name" => "billionaire"
-                 }
-             },
-             order:6,
-             limit:6
-         }
-     },
-     order:{                // optional
-         "place" => "asc"
-     },
-     limit:24,              // optional
-     skip:24                // optional
+    ) => "status"
+    },
+    conditions:{           // optional
+        and => {
+            "place" => "san"
+        },
+        or => {
+            "place" => "san"
+        }
+    },
+    between => {                //optional
+        and => {
+            "place" => {
+                "20" => "22"
+            }
+        },
+        or => {
+            "place" => {
+                "20" => "22"
+            }
+        }
+    },
+    like => {               //optional
+        and => {
+             "name" => "billionaire"
+        },
+        or => {
+             "billionaire" => "billionaire"
+        }
+    },
+    inside:{
+        "place" => {
+            match:"user_id",
+            select:{
+                "name"
+            },
+            conditions:{
+                and => {
+                    "name" => "billionaire"
+                }
+            },
+            order:6,
+            limit:6
+        }
+    },
+    order:{                // optional
+        "place" => "asc"
+    },
+    limit:24,              // optional
+    skip:24                // optional
   };
 ```
 
@@ -307,32 +327,32 @@ let update = update! {
 
 ```rust
  let delete = delete! {
-     connection => postgres,
-     model:"billionaires",
-     select:{                // Optional
-         "place"
-     },
-     conditions:{            // Optional
-         and => {            // Optional
-             "place" => 24 as i32
-         },
-         or => {             // Optional
-             "place" => 24 as i32
-         }
-     },
-     cascade:true            // Optional
+    connection => postgres,
+    model:"billionaires",
+    select:{                // Optional
+        "place"
+    },
+    conditions:{            // Optional
+        and => {            // Optional
+            "place" => 24 as i32
+        },
+        or => {             // Optional
+            "place" => 24 as i32
+        }
+    },
+    cascade:true            // Optional
  };
 ```
 
 ## DROP
 
 ```rust
-  delete_table! {
-      connection => postgres,
-      model => "photo",
-      cascade
-  }
-  .unwrap();
+    delete_table! {
+        connection => postgres,
+        model => "photo",
+        cascade
+    }
+    .unwrap();
 ```
 
 # INCLUDED INDEX => Brin,GIN,B-TREE INDEX
