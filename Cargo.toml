@@ -18,10 +18,20 @@ uuid = { version = "1.11.0" }
 chrono = "0.4.39"
 rand = "0.8.5"
 regex = "1.11.1"
+# tokio = { version = "1.43.0", optional = true, features = ["full"] }
 # geo = "0.16.0"
 
 [features]
-default = []
+default = [
+  "sync",
+  "postgres",
+  "serde",
+  "serde_json",
+  "uuid",
+  "chrono",
+  "rand",
+  "regex",
+]
 full_search = []
 ranked_search = []
 count = []
@@ -30,3 +40,5 @@ geography = []
 brin_index = []
 partition = []
 horizontal_split = []
+async = ["tokio"]
+sync = []
