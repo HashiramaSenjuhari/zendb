@@ -22,16 +22,7 @@ regex = "1.11.1"
 # geo = "0.16.0"
 
 [features]
-default = [
-  "sync",
-  "postgres",
-  "serde",
-  "serde_json",
-  "uuid",
-  "chrono",
-  "rand",
-  "regex",
-]
+default = ["postgres", "serde", "serde_json", "uuid", "chrono", "rand", "regex"]
 full_search = []
 ranked_search = []
 count = []
