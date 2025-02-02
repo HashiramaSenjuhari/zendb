@@ -1,7 +1,7 @@
 // use std::io::Read;
 
 // use postgres::types::FromSql;
-use serde::{Deserialize, Serialize};
+pub use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 pub struct ID<Billionaire>(pub Billionaire);

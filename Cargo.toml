@@ -11,21 +11,18 @@ documentation = "https://docs.rs/rusty-postgres/latest/"
 
 [dependencies]
 # postgres = "0.19.9"
-postgres = { version = "0.19.9", features = [
-  "with-uuid-1",
-  "with-chrono-0_4",
-], optional = true }
-serde = { version = "1.0.217", features = ["derive"], optional = true }
-serde_json = { version = "1.0.134", optional = true }
-uuid = { version = "1.11.0", optional = true }
-chrono = { version = "0.4.39", optional = true }
-rand = { version = "0.8.5", optional = true }
-regex = { version = "1.11.1", optional = true }
-# tokio = { version = "1.43.0", optional = true, features = ["full"] }
+postgres = { version = "0.19.9", features = ["with-uuid-1", "with-chrono-0_4"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = { version = "1.0.134" }
+uuid = { version = "1.11.0" }
+chrono = { version = "0.4.39" }
+rand = { version = "0.8.5" }
+regex = { version = "1.11.1" }
+# tokio = { version = "1.43.0", features = ["full"] }
 # geo = "0.16.0"
 
 [features]
-default = ["postgres", "serde", "serde_json", "uuid", "chrono", "rand", "regex"]
+default = []
 full_search = []
 ranked_search = []
 count = []
