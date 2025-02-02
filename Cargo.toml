@@ -1,6 +1,6 @@
 [package]
 name = "rusty-postgres"
-version = "0.1.2"
+version = "0.1.9-beta"
 edition = "2021"
 authors = ["hariprasath"]
 description = "A lightwight ORM and Query Builder for postgres"
@@ -31,5 +31,15 @@ geography = []
 brin_index = []
 partition = []
 horizontal_split = []
+full = [
+  "full_search",
+  "ranked_search",
+  "count",
+  "similar_search",
+  "geography",
+  "brin_index",
+  "partition",
+  "horizontal_split",
+]
 # async = ["tokio"]
 # sync = []

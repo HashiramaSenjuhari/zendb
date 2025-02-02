@@ -1,13 +1,15 @@
-//  pub use rusty_postgres::method::types::{OneToMany,OneToOne};
+//  use rusty_postgres::method::types::{OneToMany,OneToOne};
 #[macro_export]
 macro_rules! model {
     ($model:expr => {$($billionaire:expr => {$($value:expr),*}),*}) => {
         {
-            pub use std::panic;
-            pub use rand::Rng;
-            //  pub use rusty_postgres::method::types::{OneToMany,OneToOne};
-            pub use rusty_postgres::method::types::{OneToMany, OneToOne};
-            pub use rand::distributions::Alphanumeric;
+            use rusty_postgres::serde_json;
+            use std::panic;
+            use rusty_postgres::rand::Rng;
+            use rusty_postgres::rand;
+            //  use rusty_postgres::method::types::{OneToMany,OneToOne};
+            use rusty_postgres::method::types::{OneToMany, OneToOne};
+            use rusty_postgres::rand::distributions::Alphanumeric;
 
             let mut table = String::new();
             let mut primary_key = String::new();
@@ -30,7 +32,7 @@ macro_rules! model {
                         table.push_str(&format!("{} ",$billionaire.to_lowercase()));
                     }
                     else {
-                        panic!("Provide model name c    pub use model name is unknown {}",$billionaire);
+                        panic!("Provide model name c    use model name is unknown {}",$billionaire);
                     }
                     //
                     $(
@@ -333,11 +335,13 @@ macro_rules! model {
         to:$to:expr
     }) => {
         {
-            pub use rand::Rng;
-            pub use std::panic;
-          //    pub use rusty_postgres::method::types::{OneToOne,OneToMany};
-            pub use rusty_postgres::method::types::{OneToMany, OneToOne};
-            pub use rand::distributions::Alphanumeric;
+            use rusty_postgres::serde_json;
+            use std::panic;
+            use rusty_postgres::rand::Rng;
+            use rusty_postgres::rand;
+            //  use rusty_postgres::method::types::{OneToMany,OneToOne};
+            use rusty_postgres::method::types::{OneToMany, OneToOne};
+            use rusty_postgres::rand::distributions::Alphanumeric;
 
             let mut table = String::new();
             let mut primary_key = String::new();
@@ -360,7 +364,7 @@ macro_rules! model {
                         table.push_str(&format!("{} ",$billionaire.to_lowercase()));
                     }
                     else {
-                        panic!("Provide model name c    pub use model name is unknown {}",$billionaire);
+                        panic!("Provide model name c    use model name is unknown {}",$billionaire);
                     }
                     //
                     $(
@@ -677,9 +681,9 @@ macro_rules! model {
 #[macro_export]
 macro_rules! container {
     (client => $url:expr ,models => { $($model:expr),*}) => {{
-        pub use std::fs::DirBuilder;
-        pub use std::fs::File;
-        pub use std::io::Write;
+        use std::fs::DirBuilder;
+        use std::fs::File;
+        use std::io::Write;
 
         // let model = $model.clone()
         let mut schema = String::new();
@@ -734,10 +738,10 @@ macro_rules! container {
 #[macro_export]
 macro_rules! formats {
     ($client:expr) => {{
-        pub use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        pub use std::collections::BTreeMap;
-        pub use std::panic;
-        pub use uuid::Uuid;
+        use rusty_postgres::Uuid;
+        use rusty_postgres::{NaiveDate, NaiveDateTime, NaiveTime};
+        use std::collections::BTreeMap;
+        use std::panic;
 
         let mut billionaires = Vec::new();
         for billionaire in $client.iter() {
@@ -848,9 +852,10 @@ macro_rules! find_one {
     ) =>
     {
         {
-            pub use std::panic;
-            pub use postgres::types::ToSql;
-            pub use rusty_postgres::formats;
+            use std::panic;
+            use rusty_postgres::ToSql;
+            use rusty_postgres::formats;
+            use std::io;
 
             let mut selectvalue = String::new();
             let mut conditions = String::new();
@@ -1003,7 +1008,7 @@ macro_rules! delete_table {
 ///     },
 ///     inside:{                //optional
 ///         "place" => {
-///             match:  pub user_id",
+///             match:  user_id",
 ///             select:{
 ///                 "name"
 ///             },
@@ -1153,9 +1158,9 @@ macro_rules! find_many {
         $(,skip:$main_skip:expr)?
     ) => {
         {
-            pub use postgres::types::ToSql;
-            pub use std::io;
-            pub use rusty_postgres::formats;
+            use rusty_postgres::ToSql;
+            use std::io;
+            use rusty_postgres::formats;
 
             let mut include = String::new();
             let mut relation = String::new();
@@ -1503,7 +1508,8 @@ macro_rules! find_many {
          $location:expr
     }$(,limit:$limit:expr)?) => {
         {
-            pub use postgres::types::ToSql;
+            use rusty_postgres::ToSql;
+            use std::io;
 
             let mut selection = String::new();
             let mut location_value = String::new();
@@ -1670,8 +1676,9 @@ macro_rules! delete {
         ,cascade:$cascade:expr
     )?
         ) => {{
-        pub use postgres::types::ToSql;
-        pub use rusty_postgres::formats;
+        use rusty_postgres::ToSql;
+        use rusty_postgres::formats;
+        use std::io;
 
         let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut selection = String::new();
@@ -1816,11 +1823,11 @@ macro_rules! delete {
 ///        match:"id",
 ///        inside:{
 ///            "place"  => {
-///                match:   pub user_id",
+///                match:   user_id",
 ///                conditions:{
 ///                    and => {
 ///                        "name" => "billionaires",
-///                         pub user_id" => "c4a97a50-8679-4f85-a1d8-5bba0113b596"
+///                         user_id" => "c4a97a50-8679-4f85-a1d8-5bba0113b596"
 ///                    }
 ///                },
 ///                data:{
@@ -1862,8 +1869,9 @@ macro_rules! update {
         }
     )?
     ) => {{
-        pub use postgres::types::ToSql;
-        pub use rusty_postgres::formats;
+        use rusty_postgres::ToSql;
+        use rusty_postgres::formats;
+        use std::io;
 
         let mut condition = String::new();
         let mut set = String::new();
@@ -2022,13 +2030,15 @@ macro_rules! update {
             }
         }
         ) => {{
-            pub use postgres::types::ToSql;
+            use rusty_postgres::ToSql;
+            use std::io;
+            // use rusty_postgres::Uuid;
 
 
             let mut relation = String::new();
             let mut value:Vec<&(dyn ToSql + Sync)> = Vec::new();
             let mut updates = String::new();
-            pub use rusty_postgres::formats;
+            use rusty_postgres::formats;
 
             // $(
                 // $(
@@ -2219,7 +2229,7 @@ macro_rules! update {
 ///```
 /// let create = create! {
 ///     connection => postgres,
-///     model:  pub user_",
+///     model:  user_",
 ///     data:{
 ///         "story" => "billionairehari",
 ///         "age" => 24 as i32
@@ -2240,7 +2250,9 @@ macro_rules! create {
         }
     )?) => {
         {
-            pub use postgres::types::ToSql;
+        use rusty_postgres::ToSql;
+        use rusty_postgres::formats;
+        use std::io;
 
         let mut data = String::new();
         let mut data_value = String::new();
@@ -2309,7 +2321,7 @@ macro_rules! transaction {
 #[macro_export]
 macro_rules! show_index_list {
     (connection => $connection:expr,model:$model:expr) => {{
-        pub use std::collections::HashMap;
+        use std::collections::HashMap;
 
         let mut models = HashMap::new();
         let mut show = Vec::new();
@@ -2346,7 +2358,7 @@ macro_rules! create_index {
 }
 
 #[cfg(feature = "brin_index")]
-/// pub Used for time
+/// Used for time
 #[macro_export]
 macro_rules! create_brin_index {
     (connection => $connection:expr,model:$model:expr,name:$name:expr,index:{$($value:expr),*}) => {
@@ -2364,7 +2376,7 @@ macro_rules! create_brin_index {
 }
 
 #[cfg(feature = "geography")]
-/// pub Used for json search
+/// Used for json search
 #[macro_export]
 macro_rules! create_gin_index {
     (connection => $connection:expr,
@@ -2439,11 +2451,12 @@ macro_rules! similar_search {
         text:$o_text:expr
     })?
 ) => {{
-        pub use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        pub use std::panic;
-        pub use std::collections::{BTreeMap, HashMap};
-        pub use uuid::Uuid;
-        pub use rusty_postgres::formats;
+        use rusty_postgres::{NaiveDate, NaiveDateTime, NaiveTime};
+        use std::panic;
+        use std::collections::{BTreeMap, HashMap};
+        use rusty_postgres::Uuid;
+        use rusty_postgres::formats;
+        use std::io;
 
         let mut search = format!(
             "SELECT * FROM {} WHERE similarity({},'{}') > {} ",
@@ -2476,7 +2489,7 @@ macro_rules! similar_search {
 #[macro_export]
 macro_rules! table_structure {
     (connection =>  $connection:expr,model:$model:expr) => {{
-        pub use std::collections::HashMap;
+        use std::collections::HashMap;
 
         let table = format!(
             "SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '{}';",
@@ -2538,8 +2551,8 @@ macro_rules! count {
          }
     )?
     ) => {{
-        pub use std::collections::HashMap;
-        pub use postgres::types::ToSql;
+        use std::collections::HashMap;
+        use rusty_postgres::ToSql;
 
          let mut value = String::new();
          let mut conditions = String::new();
@@ -2631,6 +2644,8 @@ macro_rules! full_search {
     $(,take:$take:expr)?
     $(,skip:$skip:expr)?
     ) => {{
+        use std::io;
+        use rusty_postgres::formats;
         let mut selection = String::new();
         $(
             $(
@@ -2697,8 +2712,11 @@ macro_rules! ranked_search {
             $($select:expr),*
         }
     )?) => {{
+        use std::io;
+        use rusty_postgres::formats;
+
         #[derive(Debug,Clone)]
-        pub struct Score {
+        struct Score {
             score:f32,
             data:String
         };
@@ -2796,8 +2814,8 @@ macro_rules! create_partition {
 #[macro_export]
 macro_rules! horizontal_splitting {
     (connection => $connection:expr,model:$model:expr,name:$name:expr,based_on:{$based_on:expr => $value:expr}) => {{
-        pub use rand::distributions::Alphanumeric;
-        pub use rand::Rng;
+        use rand::Rng;
+        use rusty_postgres::Alphanumeric;
 
         let horizontal = format!(
             "CREATE TABLE {} AS SELECT * FROM {} WHERE {} = '{}';",
@@ -2854,11 +2872,11 @@ macro_rules! horizontal_splitting {
 #[macro_export]
 macro_rules! custome_query {
     (connection => $connection:expr,query:{$($query:expr),*} $(,value:{$($value:expr),*})?) => {{
-        pub use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        pub use postgres::types::ToSql;
-        pub use std::collections::BTreeMap;
-        pub use std::panic;
-        pub use uuid::Uuid;
+        use rusty_postgres::{NaiveDate, NaiveDateTime, NaiveTime};
+        use rusty_postgres::ToSql;
+        use std::collections::BTreeMap;
+        use std::panic;
+        use rusty_postgres::uuid::Uuid;
 
         let mut query = String::new();
         $(
@@ -2904,7 +2922,7 @@ macro_rules! custome_query {
 macro_rules! custome_execute {
     (connection => $connection:expr,query:{$($query:expr),*} $(,value:{$($value:expr),*})?) => {
         {
-            pub use postgres::types::ToSql;
+            use rusty_postgres::ToSql;
 
             let mut query = String::new();
             $(
@@ -2975,7 +2993,9 @@ macro_rules! nearby_location {
     )?
 ) => {
     {
-        pub use postgres::types::ToSql;
+        use rusty_postgres::ToSql;
+        use std::io;
+        use rusty_postgres::formats;
 
         if $lattitude.is_empty() {
             panic!("Provide Value for lattitude in float")
