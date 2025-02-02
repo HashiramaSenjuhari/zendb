@@ -1,6 +1,6 @@
-use postgres::{
+pub use postgres::{
     tls::{MakeTlsConnect, TlsConnect},
-    Error, Socket,
+    Error, NoTls, Socket,
 };
 
 pub mod method;
