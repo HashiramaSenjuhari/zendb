@@ -1,4 +1,4 @@
-pub use postgres::{
+use postgres::{
     tls::{MakeTlsConnect, TlsConnect},
     Error, Socket,
 };
