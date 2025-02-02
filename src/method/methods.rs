@@ -3,7 +3,7 @@
 macro_rules! model {
     ($model:expr => {$($billionaire:expr => {$($value:expr),*}),*}) => {
         {
-            pub use core::panic;
+            pub use std::panic;
             pub use rand::Rng;
             //  pub use rusty_postgres::method::types::{OneToMany,OneToOne};
             pub use rusty_postgres::method::types::{OneToMany, OneToOne};
@@ -334,7 +334,7 @@ macro_rules! model {
     }) => {
         {
             pub use rand::Rng;
-            pub use core::panic;
+            pub use std::panic;
           //    pub use rusty_postgres::method::types::{OneToOne,OneToMany};
             pub use rusty_postgres::method::types::{OneToMany, OneToOne};
             pub use rand::distributions::Alphanumeric;
@@ -848,7 +848,7 @@ macro_rules! find_one {
     ) =>
     {
         {
-            pub use core::panic;
+            pub use std::panic;
             pub use postgres::types::ToSql;
             pub use rusty_postgres::formats;
 
@@ -2440,7 +2440,7 @@ macro_rules! similar_search {
     })?
 ) => {{
         pub use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-        pub use core::panic;
+        pub use std::panic;
         pub use std::collections::{BTreeMap, HashMap};
         pub use uuid::Uuid;
         pub use rusty_postgres::formats;
