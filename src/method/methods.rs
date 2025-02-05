@@ -3848,7 +3848,7 @@ macro_rules! create_gin_index {
     };
 }
 
-#[cfg(not(feature = "async"))]
+#[cfg(feature = "async")]
 #[cfg(feature = "geography")]
 /// Used for json search
 #[macro_export]

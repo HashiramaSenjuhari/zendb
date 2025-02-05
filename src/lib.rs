@@ -1,11 +1,3 @@
-///
-///
-///
-///
-///
-///
-///
-///
 pub use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 pub use postgres::types::ToSql;
 pub use postgres::{
@@ -15,7 +7,6 @@ pub use postgres::{
 pub use rand;
 pub use rand::Rng;
 pub use serde_json;
-use tokio_postgres::Connection;
 pub use uuid::Uuid;
 
 pub use rand::distributions::Alphanumeric;
@@ -23,6 +14,9 @@ pub use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "async")]
 pub use tokio;
+
+#[cfg(feature = "async")]
+use tokio_postgres::Connection;
 
 #[cfg(feature = "async")]
 pub use tokio::io;
