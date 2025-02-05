@@ -18,11 +18,18 @@ uuid = { version = "1.11.0" }
 chrono = { version = "0.4.39" }
 rand = { version = "0.8.5" }
 regex = { version = "1.11.1" }
+tokio-postgres = { version = "0.7.13", features = [
+  "with-uuid-1",
+  "with-chrono-0_4",
+] }
+tokio = { version = "1.43.0", features = ["full"] }
+
 # tokio = { version = "1.43.0", features = ["full"] }
 # geo = "0.16.0"
 
 [features]
-default = []
+default = ["async", "async_full"]
+
 full_search = []
 ranked_search = []
 count = []
@@ -41,5 +48,27 @@ full = [
   "partition",
   "horizontal_split",
 ]
+
+
+async_full_search = ["async"]
+async_ranked_search = ["async"]
+async_count = ["async"]
+async_similar_search = ["async"]
+async_geography = ["async"]
+async_brin_index = ["async"]
+async_partition = ["async"]
+async_horizontal_split = ["async"]
+async_index = ["async"]
+async_full = [
+  "async_full_search",
+  "async_ranked_search",
+  "async_count",
+  "async_similar_search",
+  "async_geography",
+  "async_brin_index",
+  "async_partition",
+  "async_horizontal_split",
+]
+async = []
 # async = ["tokio"]
 # sync = []

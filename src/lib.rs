@@ -1,3 +1,11 @@
+///
+///
+///
+///
+///
+///
+///
+///
 pub use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 pub use postgres::types::ToSql;
 pub use postgres::{
@@ -7,31 +15,34 @@ pub use postgres::{
 pub use rand;
 pub use rand::Rng;
 pub use serde_json;
-// pub use std::collections::BTreeMap;
-// pub use std::fs::DirBuilder;
-// pub use std::fs::File;
-// pub use std::io;
-// pub use std::io::Write;
-// pub use std::panic;
+use tokio_postgres::Connection;
 pub use uuid::Uuid;
 
 pub use rand::distributions::Alphanumeric;
 pub use serde::{Deserialize, Serialize};
 
-// use core::error::Error;
-// use core::fmt::Error;
-// use io::Error;
-// use rusty_postgres::Error;
-// use std::error::Error;
-// use std::fmt::Error;
-// use std::io::Error;
+#[cfg(feature = "async")]
+pub use tokio;
+
+#[cfg(feature = "async")]
+pub use tokio::io;
+
+#[cfg(feature = "async")]
+pub use tokio_postgres::types::ToSql as AsyncToSql;
+
+#[cfg(feature = "async")]
+pub use tokio_postgres::{
+    tls::{MakeTlsConnect as AsyncMakeTlsConnect, TlsConnect as AsyncTlsConnect},
+    Error as AsyncError, NoTls as AsyncNoTls, Socket as AsyncSocket,
+};
 
 #[macro_use]
 pub mod method;
-// pub mod tests;
 
+#[cfg(not(feature = "async"))]
 pub struct Client;
 
+#[cfg(not(feature = "async"))]
 impl Client {
     pub fn connect<T>(client: &str, tls_mode: T) -> Result<postgres::Client, Error>
     where
@@ -42,5 +53,32 @@ impl Client {
     {
         let client = postgres::Client::connect(client, tls_mode);
         client
+    }
+}
+
+#[cfg(feature = "async")]
+pub struct TokioClient;
+
+#[cfg(feature = "async")]
+impl TokioClient {
+    pub async fn connect<T>(client: &str, tls_mode: T) -> Result<tokio_postgres::Client, Error>
+    where
+        T: AsyncMakeTlsConnect<Socket> + 'static + Send,
+        T::TlsConnect: Send,
+        T::Stream: Send,
+        <T::TlsConnect as TlsConnect<Socket>>::Future: Send,
+    {
+        let client = tokio_postgres::connect(client, tls_mode);
+        match client.await {
+            Ok((client, connection)) => {
+                tokio::spawn(async move {
+                    if let Err(err) = connection.await {
+                        eprintln!("{}", err);
+                    }
+                });
+                Ok(client)
+            }
+            Err(err) => Err(err),
+        }
     }
 }
