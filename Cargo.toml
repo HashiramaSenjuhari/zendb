@@ -1,6 +1,6 @@
 [package]
 name = "rusty-postgres"
-version = "0.1.10-beta"
+version = "0.1.11-beta"
 edition = "2021"
 authors = ["hariprasath"]
 description = "A lightwight ORM and Query Builder for postgres"
@@ -28,7 +28,7 @@ tokio = { version = "1.43.0", features = ["full"], optional = true }
 # geo = "0.16.0"
 
 [features]
-default = []
+default = ["async"]
 
 full_search = []
 ranked_search = []

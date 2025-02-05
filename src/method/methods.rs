@@ -745,10 +745,10 @@ macro_rules! container {
 macro_rules! container {
      (client => $url:expr ,models => { $($model:expr),*}) => {
         {
-        use tokio::fs::DirBuilder;
-        use tokio::fs::File;
-        use tokio::io::AsyncWriteExt;
-        use tokio_postgres::GenericClient;
+        use rusty_postgres::tokio::fs::DirBuilder;
+        use rusty_postgres::tokio::fs::File;
+        use rusty_postgres::tokio::io::AsyncWriteExt;
+        use rusty_postgres::GenericClient;
 
         // let model = $model.clone()
         let mut schema = String::new();

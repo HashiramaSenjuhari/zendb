@@ -30,6 +30,18 @@ pub use tokio_postgres::{
     Error as AsyncError, NoTls as AsyncNoTls, Socket as AsyncSocket,
 };
 
+#[cfg(feature = "async")]
+pub use tokio::fs::File;
+
+#[cfg(feature = "async")]
+pub use tokio::io::AsyncWriteExt;
+
+#[cfg(feature = "async")]
+pub use tokio_postgres::GenericClient;
+
+#[cfg(feature = "async")]
+pub use tokio::fs::DirBuilder;
+
 #[macro_use]
 pub mod method;
 
