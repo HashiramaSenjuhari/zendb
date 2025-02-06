@@ -1,6 +1,6 @@
 [package]
 name = "rusty-postgres"
-version = "0.1.18-beta"
+version = "0.1.19-beta"
 edition = "2021"
 authors = ["hariprasath"]
 description = "A lightwight ORM and Query Builder for postgres"
