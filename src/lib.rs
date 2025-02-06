@@ -42,6 +42,9 @@ pub use tokio_postgres::GenericClient;
 #[cfg(feature = "async")]
 pub use tokio::fs::DirBuilder;
 
+#[cfg(feature = "async")]
+pub use tokio_postgres::Client;
+
 #[macro_use]
 pub mod method;
 
