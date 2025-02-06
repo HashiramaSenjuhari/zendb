@@ -28,7 +28,7 @@ tokio = { version = "1.43.0", features = ["full"], optional = true }
 # geo = "0.16.0"
 
 [features]
-default = ["async"]
+default = []
 
 full_search = []
 ranked_search = []
