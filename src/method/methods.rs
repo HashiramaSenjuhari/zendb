@@ -1019,6 +1019,31 @@ macro_rules! find_one {
     };
 }
 
+///
+/// # Usage
+///
+/// ```
+/// let find = find_one! {
+///     connection => postgres,
+///     model:"place",
+///     select:{
+///         "name"
+///     },
+///     conditions:{
+///         and => {
+///             "name" => "billionairehari"
+///         },
+///         or => {
+///             "name" => "billionairehari"
+///         }
+///     },
+///     order:{
+///         "name" => "asc"
+///     }
+/// };
+/// ```
+///
+///
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! find_one {
@@ -1803,6 +1828,103 @@ macro_rules! find_many {
         }
     };
 }
+/// ## Returns
+/// ```
+/// Result<Vec<Vec<std::collections::BTreeMap<String, String>>>, io::Error>
+/// ```
+/// # Example
+/// ## Basic
+/// ```
+///  let find = find_many! {
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{               // optional
+///         "place"
+///     },
+///     case:{              //optional
+///     (
+///         "place" => ">22",
+///         "place" => "<22",
+///         "place" => "=22"
+///         ) => (ok:"billion_dollar",
+///         ok:"billionaire",
+///         ok:"billionaire"
+///         ,else:"trillionaire"
+///     ) => "status"
+///     },
+///     conditions:{           // optional
+///         and => {
+///             "place" => "san"
+///         },
+///         or => {
+///             "place" => "san"
+///         }
+///     },      
+///     between => {                //optional
+///         and => {
+///             "place" => {
+///                 "20" => "22"
+///             }
+///         },
+///         or => {
+///             "place" => {
+///                 "20" => "22"
+///             }
+///         }
+///     },
+///     like => {               //optional
+///         and => {
+///             "name" => "billionaire"
+///         },
+///         or => {
+///             "billionaire" => "billionaire"
+///         }
+///     },
+///     inside:{                //optional
+///         "place" => {
+///             match:  user_id",
+///             select:{
+///                 "name"
+///             },
+///             conditions:{
+///                 and => {
+///                     "name" => "billionaire"
+///                 }
+///             },
+///             order:6,
+///             limit:6
+///         }
+///     },               
+///     order:{                // optional
+///         "place" => "asc"
+///     },
+///     limit:24,              // optional
+///     skip:24                // optional
+///  };
+///  println!("{:?}", find);
+/// ```
+///
+///
+/// ## Geography Search
+///
+/// ```
+/// let find = find_many! {
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{            // optional
+///         "place"
+///     },
+///     within:{
+///         lattitude:"12.971599",
+///         longitude:"77.594566",
+///         within:6                // optional
+///     },
+///     also_include:{
+///         "location"
+///     },
+///     limit:6             // optional
+/// };
+/// ```
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! find_many {
@@ -2374,6 +2496,18 @@ macro_rules! delete_many {
         $connection.execute(&delete, &[])
     }};
 }
+
+///
+/// # Usage
+///
+/// ```
+/// let drop = delete_many!{
+///     connection => postgres,
+///     model:"place"
+/// };
+/// ```
+///
+///
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! delete_many {
@@ -2555,6 +2689,25 @@ macro_rules! delete {
 
     }};
 }
+/// # Example
+/// ```
+/// let delete = delete! {
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{                // Optional
+///         "place"
+///     },
+///     conditions:{            // Optional
+///         and => {            // Optional
+///             "place" => 24 as i32
+///         },
+///         or => {             // Optional
+///             "place" => 24 as i32
+///         }
+///     },
+///     cascade:true            // Optional
+/// };
+/// ```
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! delete {
@@ -3129,6 +3282,56 @@ macro_rules! update {
         }};
 }
 
+///
+/// # Example
+///
+/// ```
+/// let update = update! {
+///     connection => postgres,
+///     model:"place",
+///     select:{
+///         "id"
+///     },
+///     data:{
+///         "name" => "billionairehari"
+///     },
+///     conditions:{
+///         and => {
+///             "name" => "billionairehari"
+///         },
+///         or => {
+///             "" => ""
+///         }
+///     }
+/// };
+/// ```
+///
+/// ## Usage
+/// ```
+/// let update = update! {
+///        connection => postgres,
+///        model:"billionaires",
+///        match:"id",
+///        inside:{
+///            "place"  => {
+///                match:   user_id",
+///                conditions:{
+///                    and => {
+///                        "name" => "billionaires",
+///                         user_id" => "c4a97a50-8679-4f85-a1d8-5bba0113b596"
+///                    }
+///                },
+///                data:{
+///                    "name" => "billionairehari"
+///                },
+///                select:{
+///                    "name"
+///                }
+///            }
+///        }
+///    };
+/// ```
+///
 #[cfg(feature = "async")]
 #[macro_export]
 // * data conditions
@@ -3597,6 +3800,34 @@ macro_rules! create {
     }
 }
 
+///
+/// # Example
+///
+/// ```
+/// let create = create! {
+///     connection => postgres,
+///     model:"shop",
+///     data:{
+///         "place" => "san",
+///         "age" => 24 as i32,
+///         "bool" => true
+///     }
+/// };
+/// ```
+///
+///```
+/// let create = create! {
+///     connection => postgres,
+///     model:  user_",
+///     data:{
+///         "story" => "billionairehari",
+///         "age" => 24 as i32
+///     },
+///     select:{
+///         "id"
+///     }
+/// };
+/// ```
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! create {
@@ -3955,6 +4186,26 @@ macro_rules! similar_search {
         }
     }};
 }
+/// search
+///
+/// # Example
+///
+/// ```
+/// let search = similar_search {
+///     connection => postgres,
+///     model:"place",
+///     similarity:{
+///         score:"0.6", //similarity score
+///         believe:"name" //based_on
+///         text:"san" //text
+///     },
+///     order_by:{              //optional
+///         order:"asc",
+///         believe:"name" //based
+///     }
+/// }
+/// ```
+///
 #[cfg(feature = "async")]
 #[cfg(feature = "async_similar_search")]
 #[macro_export]
@@ -4157,6 +4408,28 @@ macro_rules! count {
          z
      }};
 }
+///
+/// # Usage
+///
+/// ```
+/// let count = count! {
+///     connection => postgres,
+///     model:"place",
+///     count:{
+///         "name"
+///     },
+///     conditions:{
+///         and => {
+///             "name" => "billionaires"
+///         }
+///     },
+///     group_by:{
+///         "name"
+///     }
+/// };
+/// ```
+///
+///
 #[cfg(feature = "async")]
 #[cfg(feature = "async_count")]
 #[macro_export]
@@ -4311,6 +4584,25 @@ macro_rules! full_search {
         }
     }};
 }
+///
+/// # Usage
+///
+/// ```
+/// let search = full_search! {
+///     connection => postgres,
+///     model:"place",
+///     based_on:"name",
+///     search:{
+///         value:"billionaire"
+///     },
+///     select:{
+///         ,"name"
+///     },
+///     take:6,
+///     skip:0
+/// };
+/// ```
+///
 #[cfg(feature = "async")]
 #[cfg(feature = "async_full_search")]
 #[macro_export]
@@ -4454,6 +4746,24 @@ macro_rules! ranked_search {
         // println!("{}",rank);
     }};
 }
+///
+/// # Usage
+///
+/// ```
+/// let search = ranked_search! {
+///     connection => postgres,
+///     model:"place",
+///     based_on:"name",
+///     search:{
+///         value:"billionaire"
+///     },
+///     select:{
+///         "name"
+///     }
+/// };
+/// ```
+///
+///
 #[cfg(feature = "async")]
 #[cfg(feature = "async_ranked_search")]
 #[macro_export]
@@ -4549,6 +4859,17 @@ macro_rules! create_partition {
         $connection.execute(&partition, &[])
     }};
 }
+///
+/// # Usage
+///
+/// ```
+/// let partition = create_partition {
+///     connection => postgres,
+///     model:"place",
+///     name:"partition_name",
+///     field:"value_to_match"
+/// }
+/// ```
 #[cfg(feature = "async")]
 #[cfg(feature = "async_partition")]
 #[macro_export]
@@ -4619,6 +4940,19 @@ macro_rules! horizontal_splitting {
         $connection.execute(&function, &[]).unwrap();
     }};
 }
+///
+/// # Usage
+///
+/// ```
+/// horizontal_splitting {
+///     connection => postgres,
+///     model:"",
+///     name:"name_of_spllit",
+///     based_on:{
+///     "country" => "usa"    
+///     }
+/// }
+/// ```
 #[cfg(feature = "async")]
 #[cfg(feature = "async_horizontal_split")]
 #[macro_export]
@@ -4714,6 +5048,20 @@ macro_rules! custome_query {
         }
     }};
 }
+///
+/// # Usage
+///
+/// ```
+/// let query = custome_query {
+///     connection => postgres,
+///     query:{
+///         "SELECT * FROM place WHERE name = $1"
+///     },
+///     value:{
+///         "billionaires"
+///     }
+/// }
+/// ```
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! custome_query {
@@ -4786,6 +5134,20 @@ macro_rules! custome_execute {
         }
     };
 }
+///
+/// # Usage
+///
+/// ```
+/// let partition = custome_execute! {
+///     connection => postgres,
+///     query:{
+///         "INSERT INTO place VALUES ($1)"
+///     },
+///     value:{
+///         "billionaires"
+///     }
+/// };
+/// ```
 #[cfg(feature = "async")]
 #[macro_export]
 macro_rules! custome_execute {
@@ -4951,6 +5313,30 @@ macro_rules! nearby_location {
         }
     }};
 }
+/// # Example
+///
+///
+/// ```
+/// let location = nearby_location! {
+///     connection => postgres,
+///     model:"billionaires",
+///     select:{
+///         "place"
+///     },
+///     location:{
+///         lattitude:"12.971560",
+///         longitude:"77.594560",
+///         within:"4000"               //optional
+///     },
+///     select_from:{
+///         "location"
+///     },
+///     order:{                 //optiona
+///         location:"asc",     //optional
+///         "place" => "asc"    //optional
+///     }
+/// };
+/// ```
 #[cfg(feature = "async")]
 #[macro_export]
 #[cfg(feature = "async_geography")]
