@@ -1395,11 +1395,13 @@ macro_rules! find_many {
             let mut relation = String::new();
             let mut selection = String::new();
             let mut case = String::new();
+            let mut table_dots = String::new();
 
             let bb = $model.chars().nth(0).unwrap();
             let table_name = format!("{} {}",$model,bb);
             $(
                 let table_dot = format!("{}.{}",bb,$model_value);
+                table_dots.push_str(&table_dot);
             )?
             let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
 
@@ -2041,11 +2043,13 @@ macro_rules! find_many {
             let mut relation = String::new();
             let mut selection = String::new();
             let mut case = String::new();
+            let mut table_dots = String::new();
 
             let bb = $model.chars().nth(0).unwrap();
             let table_name = format!("{} {}",$model,bb);
             $(
                 let table_dot = format!("{}.{}",bb,$model_value);
+                table_dots.push_str(&table_dot);
             )?
             let mut values:Vec<&(dyn ToSql + Sync)> = Vec::new();
 
@@ -2184,7 +2188,7 @@ macro_rules! find_many {
                 let b = $include.chars().nth(0).unwrap();
                 let r1 = format!("{} {}",$include,b);
                 let r2 = format!("{}.{}",b,$include_match);
-                let inside = format!("LEFT JOIN {} {} ON {} = {}",select,b,table_dot,r2);
+                let inside = format!("LEFT JOIN {} {} ON {} = {}",select,b,table_dots,r2);
                 // println!("{}",inside);
 
                 include.push_str(&inside);
