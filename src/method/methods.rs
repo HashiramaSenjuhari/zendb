@@ -1173,11 +1173,11 @@ macro_rules! delete_table {
 macro_rules! delete_table {
     (connection => $connection:expr,model => $model:expr) => {{
         let delete = format!("DROP TABLE IF EXISTS {} ;", $model);
-        $connection.execute(&delete, &[])
+        $connection.execute(&delete, &[]).await
     }};
     (connection => $connection:expr,model => $model:expr,cascade) => {{
         let delete = format!("DROP TABLE IF EXISTS {} CASCADE;", $model);
-        $connection.execute(&delete, &[])
+        $connection.execute(&delete, &[]).await
     }};
 }
 
