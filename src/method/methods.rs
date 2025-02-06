@@ -2160,6 +2160,11 @@ macro_rules! find_many {
                 }
 
                 let b = $include.chars().nth(0).unwrap();
+                let b = match b == bb {
+                    true  => $include.chars().nth(1).unwrap(),
+                    false => $include.chars().nth(0).unwrap()
+                };
+
 
                 $(
                     $(
@@ -2185,7 +2190,7 @@ macro_rules! find_many {
                 // let or = format!("({})",inside_condition);
                 // println!("{}",select);
 
-                let b = $include.chars().nth(0).unwrap();
+                // let b = $include.chars().nth(0).unwrap();
                 let r1 = format!("{} {}",$include,b);
                 let r2 = format!("{}.{}",b,$include_match);
                 let inside = format!("LEFT JOIN {} {} ON {} = {}",select,b,table_dots,r2);
@@ -2361,7 +2366,7 @@ macro_rules! find_many {
             )?
             // println!("{}",conditions);
             // println!("{}",relation);
-            // println!("{}",query);
+            println!("{}",query);
             // println!("{:?}",values);
             let client = $connection.query(&query,&values).await;
             match client {
